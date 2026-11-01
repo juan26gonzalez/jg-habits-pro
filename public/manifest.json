@@ -1,0 +1,24 @@
+{
+  "name": "JG Hábits Pro",
+  "short_name": "JG Hábits",
+  "description": "Tu sistema operativo personal para finanzas, hábitos y compras.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#F8FAFC",
+  "theme_color": "#0F172A",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/icon512_maskable.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/icon512_rounded.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}
