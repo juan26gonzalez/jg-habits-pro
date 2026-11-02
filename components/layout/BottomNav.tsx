@@ -9,19 +9,39 @@ interface BottomNavProps {
 
 export default function BottomNav({ pestañaActiva, setPestañaActiva, navItems }: BottomNavProps) {
   return (
-    <nav className="md:hidden fixed bottom-0 left-0 w-full bg-white/80 backdrop-blur-xl border-t border-gray-200 z-50 flex justify-around items-center p-2 pb-safe shadow-[0_-10px_40px_rgba(0,0,0,0.05)]">
-      {navItems.map(item => (
-        <button 
-          key={item.id}
-          onClick={() => setPestañaActiva(item.id)} 
-          className={`flex flex-col items-center p-2 min-w-[70px] rounded-2xl transition-all ${pestañaActiva === item.id ? 'text-blue-600 scale-110' : 'text-gray-400 hover:text-gray-600'}`}
-        >
-          <span className={`text-2xl mb-1 ${pestañaActiva === item.id ? 'opacity-100' : 'opacity-70 grayscale'}`}>{item.icon}</span>
-          <span className={`text-[10px] font-black uppercase tracking-wider ${pestañaActiva === item.id ? 'opacity-100' : 'opacity-0 h-0 overflow-hidden'}`}>
-            {item.label.split(' ')[0]}
-          </span>
-        </button>
-      ))}
+    <nav className="md:hidden fixed bottom-4 inset-x-4 max-w-sm mx-auto z-50">
+      {/* Dock Liquid Glass Container */}
+      <div className="bg-white/55 backdrop-blur-2xl border border-white/70 shadow-[0_16px_36px_rgba(0,0,0,0.1),inset_0_1px_1px_rgba(255,255,255,0.95)] rounded-3xl p-1.5 flex items-center justify-between ring-1 ring-black/5">
+        {navItems.map(item => {
+          const isActive = pestañaActiva === item.id;
+          return (
+            <button 
+              key={item.id}
+              onClick={() => setPestañaActiva(item.id)} 
+              className={`relative flex flex-col items-center justify-center py-2 px-3.5 rounded-2xl transition-all duration-300 active:scale-90 flex-1 ${
+                isActive 
+                  ? 'bg-white/80 text-zinc-900 shadow-[0_4px_16px_rgba(0,0,0,0.08),inset_0_1px_2px_rgba(255,255,255,1)] border border-white/90 scale-102' 
+                  : 'text-zinc-400 hover:text-zinc-700 hover:bg-white/20 border border-transparent'
+              }`}
+            >
+              {/* Reflejo de cristal superior para botón activo */}
+              {isActive && (
+                <div className="absolute top-1 inset-x-3 h-[1px] bg-gradient-to-r from-transparent via-white to-transparent opacity-80" />
+              )}
+              
+              <span className={`text-xl transition-transform duration-300 ${isActive ? 'scale-110 drop-shadow-xs' : 'opacity-60 grayscale'}`}>
+                {item.icon}
+              </span>
+              
+              <span className={`text-[9px] font-extrabold uppercase tracking-tight mt-0.5 transition-all ${
+                isActive ? 'text-zinc-900 opacity-100 font-black' : 'text-zinc-400 opacity-70'
+              }`}>
+                {item.label}
+              </span>
+            </button>
+          );
+        })}
+      </div>
     </nav>
   );
 }

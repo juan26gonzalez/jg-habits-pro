@@ -172,7 +172,7 @@ export default function Home() {
   }
 
   return (
-    <main className="min-h-screen bg-[#F8FAFC] pb-24 md:pb-12 p-4 md:p-8">
+    <main className="min-h-screen bg-[#F8F9FA] pb-28 md:pb-12 p-4 md:p-8">
       <Header 
         pestañaActiva={pestañaActiva} 
         setPestañaActiva={setPestañaActiva} 

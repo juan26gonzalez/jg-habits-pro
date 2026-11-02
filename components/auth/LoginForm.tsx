@@ -20,38 +20,41 @@ export default function LoginForm() {
   }
 
   return (
-    <main className="min-h-screen bg-slate-50 flex items-center justify-center p-6 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')]">
-      <form onSubmit={iniciarSesion} className="bg-white/80 backdrop-blur-xl p-8 rounded-3xl shadow-xl border border-gray-100 w-full max-w-md transition-all">
-        <div className="w-16 h-16 bg-gradient-to-br from-slate-900 to-slate-700 text-white rounded-2xl flex items-center justify-center text-3xl shadow-lg mb-6 mx-auto">⚙️</div>
-        <h2 className="text-2xl font-extrabold text-slate-900 mb-2 text-center tracking-tight">JG Hábits Pro</h2>
-        <p className="text-sm text-gray-500 mb-8 text-center">Tu sistema operativo personal</p>
+    <main className="min-h-screen bg-[#F8F9FA] flex items-center justify-center p-6">
+      <form onSubmit={iniciarSesion} className="bg-white p-8 rounded-3xl shadow-[0_8px_32px_rgba(0,0,0,0.04)] border border-zinc-200/80 w-full max-w-md transition-all">
+        <div className="w-14 h-14 bg-zinc-900 text-white rounded-2xl flex items-center justify-center text-2xl shadow-sm mb-5 mx-auto">⚙️</div>
+        <h2 className="text-2xl font-extrabold text-zinc-900 mb-1 text-center tracking-tight">JG Hábits Pro</h2>
+        <p className="text-xs text-zinc-400 mb-8 text-center uppercase font-bold tracking-wider">Sistema Operativo Personal</p>
         
         {errorLogin && (
-          <div className="mb-4 p-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-sm font-medium text-center">
+          <div className="mb-4 p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold text-center">
             {errorLogin}
           </div>
         )}
         
-        <input 
-          type="email" 
-          placeholder="Correo electrónico" 
-          value={email} 
-          onChange={(e) => setEmail(e.target.value)} 
-          className="w-full p-4 border border-gray-200 rounded-2xl mb-4 text-slate-900 focus:ring-2 focus:ring-blue-500 outline-none bg-gray-50 focus:bg-white transition-all" 
-          required 
-        />
-        <input 
-          type="password" 
-          placeholder="Contraseña" 
-          value={password} 
-          onChange={(e) => setPassword(e.target.value)} 
-          className="w-full p-4 border border-gray-200 rounded-2xl mb-6 text-slate-900 focus:ring-2 focus:ring-blue-500 outline-none bg-gray-50 focus:bg-white transition-all" 
-          required 
-        />
+        <div className="space-y-3 mb-6">
+          <input 
+            type="email" 
+            placeholder="Correo electrónico" 
+            value={email} 
+            onChange={(e) => setEmail(e.target.value)} 
+            className="w-full p-3.5 border border-zinc-200 rounded-2xl text-zinc-900 font-medium focus:border-zinc-900 outline-none bg-zinc-50 focus:bg-white transition-all text-sm" 
+            required 
+          />
+          <input 
+            type="password" 
+            placeholder="Contraseña" 
+            value={password} 
+            onChange={(e) => setPassword(e.target.value)} 
+            className="w-full p-3.5 border border-zinc-200 rounded-2xl text-zinc-900 font-medium focus:border-zinc-900 outline-none bg-zinc-50 focus:bg-white transition-all text-sm" 
+            required 
+          />
+        </div>
+
         <button 
           type="submit" 
           disabled={cargando}
-          className="w-full bg-slate-900 text-white py-4 rounded-2xl font-bold hover:bg-slate-800 active:scale-95 transition-all shadow-md disabled:opacity-50"
+          className="w-full bg-zinc-900 text-white py-3.5 rounded-2xl font-bold hover:bg-zinc-800 active:scale-95 transition-all shadow-sm disabled:opacity-50 text-sm"
         >
           {cargando ? 'Accediendo...' : 'Acceder al Sistema'}
         </button>
