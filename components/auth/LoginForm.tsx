@@ -26,7 +26,7 @@ export default function LoginForm() {
           <span className="text-base font-black tracking-widest text-white leading-none">JGM</span>
           <span className="text-[9px] font-bold tracking-widest text-[#E5C8B4] leading-none mt-1">GOALS</span>
         </div>
-        <h2 className="text-2xl font-extrabold text-[#2D1C14] mb-1 text-center tracking-tight">JGM Goals</h2>
+        <h2 className="text-2xl font-extrabold text-[#2D1C14] mb-1 text-center tracking-tight">JGM GOALS</h2>
         <p className="text-xs text-[#8D6B57] mb-8 text-center uppercase font-bold tracking-wider">Sistema Operativo Personal</p>
         
         {errorLogin && (

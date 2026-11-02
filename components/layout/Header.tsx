@@ -18,7 +18,7 @@ export default function Header({ pestañaActiva, setPestañaActiva, navItems, on
             <span className="text-[7px] font-bold tracking-widest text-[#E5C8B4] leading-none mt-0.5">GOALS</span>
           </div>
           <div>
-            <h1 className="text-xl md:text-2xl font-extrabold text-[#2D1C14] tracking-tight">JGM Goals</h1>
+            <h1 className="text-xl md:text-2xl font-extrabold text-[#2D1C14] tracking-tight">JGM GOALS</h1>
             <span className="text-[10px] font-bold uppercase tracking-wider text-[#8D6B57] block -mt-0.5">Sistema Operativo Personal</span>
           </div>
         </div>

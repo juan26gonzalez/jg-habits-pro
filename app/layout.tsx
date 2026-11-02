@@ -9,17 +9,20 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  title: "JGM Goals",
+  title: "JGM GOALS",
   description: "Sistema operativo personal",
   manifest: "/manifest.json",
   icons: {
-    icon: "/icon512_rounded.png",
+    icon: [
+      { url: "/favicon.ico", sizes: "any" },
+      { url: "/icon512_rounded.png", sizes: "512x512", type: "image/png" }
+    ],
     apple: "/apple-touch-icon.png",
   },
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "JGM Goals",
+    title: "JGM GOALS",
   },
 };
 
