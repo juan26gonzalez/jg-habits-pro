@@ -29,12 +29,15 @@ export default function BottomNav({ pestañaActiva, setPestañaActiva, navItems 
                 <div className="absolute top-1 inset-x-3 h-[1px] bg-gradient-to-r from-transparent via-white to-transparent opacity-80" />
               )}
               
-              <span className={`text-xl transition-transform duration-300 ${isActive ? 'scale-110 drop-shadow-xs' : 'opacity-60 grayscale'}`}>
+              {/* Icono en Blanco y Negro de Alto Contraste */}
+              <span className={`text-xl transition-all duration-300 inline-block filter grayscale contrast-150 ${
+                isActive ? 'scale-110 brightness-50 opacity-100 drop-shadow-2xs' : 'opacity-40 brightness-75'
+              }`}>
                 {item.icon}
               </span>
               
               <span className={`text-[9px] font-extrabold uppercase tracking-tight mt-0.5 transition-all ${
-                isActive ? 'text-zinc-900 opacity-100 font-black' : 'text-zinc-400 opacity-70'
+                isActive ? 'text-zinc-900 opacity-100 font-black' : 'text-zinc-400 opacity-60'
               }`}>
                 {item.label}
               </span>

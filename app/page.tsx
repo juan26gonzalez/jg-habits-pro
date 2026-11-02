@@ -24,7 +24,7 @@ import GroceryTab from '@/components/grocery/GroceryTab';
 
 const navItems: NavItem[] = [
   { id: 'calendario', icon: '📅', label: 'Dashboard' },
-  { id: 'habitos', icon: '🗓️', label: 'Habits' },
+  { id: 'habitos', icon: '🎯', label: 'Targets' },
   { id: 'finanzas', icon: '💰', label: 'Finances' },
   { id: 'supermercado', icon: '🛒', label: 'Grocery' }
 ];

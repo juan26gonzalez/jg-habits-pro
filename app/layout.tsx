@@ -9,13 +9,13 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  title: "JG Hábits Pro",
+  title: "JGM Goals",
   description: "Sistema operativo personal",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "JG Hábits Pro",
+    title: "JGM Goals",
   },
 };
 
