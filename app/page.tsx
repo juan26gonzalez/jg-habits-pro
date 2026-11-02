@@ -31,13 +31,14 @@ function TarjetaFinanzas({ gasto, sesion, strHoy }: any) {
   const restante = montoTotal - totalAportado;
   const porcentaje = montoTotal > 0 ? Math.min(100, (totalAportado / montoTotal) * 100) : 0;
 
-  // NUEVO: CÁLCULO DE ALERTA DE VENCIMIENTO
-  let diasParaVencer = null;
+  // NUEVO: CÁLCULO DE ALERTA DE VENCIMIENTO SEGURO
+  let diasParaVencer = 0;
   let esUrgente = false;
   let estaVencido = false;
+  let tieneFecha = false;
   
   if (gasto.fecha_vencimiento && strHoy) {
-    // Usamos T12:00:00 para evitar saltos de zona horaria al comparar
+    tieneFecha = true;
     const fVenc = new Date(`${gasto.fecha_vencimiento}T12:00:00`);
     const fHoy = new Date(`${strHoy}T12:00:00`);
     const diffTime = fVenc.getTime() - fHoy.getTime();
@@ -46,7 +47,6 @@ function TarjetaFinanzas({ gasto, sesion, strHoy }: any) {
     estaVencido = diasParaVencer < 0;
   }
 
-  // Estilos dinámicos del borde según el estado
   const bordeEstado = porcentaje >= 100 
     ? 'border-green-300 ring-2 ring-green-50 shadow-green-100' 
     : (estaVencido ? 'border-red-400 ring-2 ring-red-50 shadow-red-100' : (esUrgente ? 'border-amber-400 ring-2 ring-amber-50 shadow-amber-100' : 'border-gray-100'));
@@ -71,11 +71,10 @@ function TarjetaFinanzas({ gasto, sesion, strHoy }: any) {
         <div className="flex justify-between items-start mb-4 gap-2">
           <span className="text-[10px] font-black uppercase tracking-widest text-slate-600 bg-slate-100 px-3 py-1.5 rounded-xl truncate">{gasto.categoria || 'General'}</span>
           
-          {/* NUEVO: ETIQUETA DE VENCIMIENTO DINÁMICA */}
           <span className={`text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-xl whitespace-nowrap ${porcentaje >= 100 ? 'bg-green-100 text-green-700' : (estaVencido ? 'bg-red-100 text-red-700 animate-pulse' : (esUrgente ? 'bg-amber-100 text-amber-700' : 'bg-gray-50 text-gray-500 border border-gray-100'))}`}>
             {porcentaje >= 100 ? 'Pagado ✔️' : (
-              gasto.fecha_vencimiento 
-                ? (estaVencido ? `Vencido (${Math.abs(diasParaVencer!)}d)` : (esUrgente ? `¡Vence en ${diasParaVencer}d!` : `Vence: ${gasto.fecha_vencimiento}`)) 
+              tieneFecha 
+                ? (estaVencido ? `Vencido (${Math.abs(diasParaVencer)}d)` : (esUrgente ? `¡Vence en ${diasParaVencer}d!` : `Vence: ${gasto.fecha_vencimiento}`)) 
                 : 'Sin fecha'
             )}
           </span>
@@ -317,6 +316,7 @@ export default function Home() {
   const totalCarrito = mercadoLista.filter(i => i.comprado).reduce((suma, item) => suma + ((item.cantidad * item.precio_unitario) - ((item.cantidad * item.precio_unitario) * ((item.descuento_porcentaje || 0) / 100))), 0);
   const pendientes = totalProyectado - totalCarrito;
 
+  // VERIFICACIÓN DE SESIÓN (RENDER ÚNICO)
   if (!sesion && !cargandoGlobal) {
     return (
       <main className="min-h-screen bg-slate-50 flex items-center justify-center p-6 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')]">
@@ -354,6 +354,7 @@ export default function Home() {
     );
   }
 
+  // GENERACIÓN DEL CALENDARIO MAESTRO
   const diasEnMes = new Date(anioActual, mesActual + 1, 0).getDate();
   const primerDiaSemana = new Date(anioActual, mesActual, 1).getDay();
   const celdasCalendario = [];
@@ -408,7 +409,7 @@ export default function Home() {
     { id: 'supermercado', icon: '🛒', label: 'Grocery' }
   ];
 
-  // NUEVO: CÁLCULOS PARA EL DASHBOARD FINANCIERO
+  // CÁLCULOS PARA EL DASHBOARD FINANCIERO
   const categoriasGastos = gastos.reduce((acc, g) => {
     const cat = g.categoria || 'General';
     acc[cat] = (acc[cat] || 0) + Number(g.monto_total);
@@ -443,8 +444,9 @@ export default function Home() {
       </div>
 
       {/* ========================================== */}
-      {/* 1. VISTA: CALENDARIO MAESTRO               */}
+      {/* VISTAS                                     */}
       {/* ========================================== */}
+
       {pestañaActiva === 'calendario' && (
         <div className="max-w-6xl mx-auto animate-fade-in">
           <div className="flex flex-wrap gap-2 md:gap-3 mb-4 bg-white p-2.5 rounded-2xl border border-gray-100 w-max shadow-sm">
@@ -473,9 +475,6 @@ export default function Home() {
         </div>
       )}
 
-      {/* ========================================== */}
-      {/* 2. VISTA: HÁBITOS                          */}
-      {/* ========================================== */}
       {pestañaActiva === 'habitos' && (
         <div className="max-w-5xl mx-auto animate-fade-in">
           <form onSubmit={agregarHabito} className="bg-white p-6 md:p-8 rounded-3xl shadow-sm border border-gray-100 mb-8">
@@ -575,13 +574,9 @@ export default function Home() {
         </div>
       )}
 
-      {/* ========================================== */}
-      {/* 3. VISTA: FINANZAS CON MEJORAS             */}
-      {/* ========================================== */}
       {pestañaActiva === 'finanzas' && (
         <div className="max-w-4xl mx-auto animate-fade-in">
           
-          {/* NUEVO: DASHBOARD GRÁFICO DE FINANZAS */}
           {gastos.length > 0 && (
             <div className="bg-white p-6 md:p-8 rounded-3xl shadow-sm border border-gray-100 mb-8">
               <h3 className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2">Distribución del Presupuesto Total</h3>
@@ -624,9 +619,6 @@ export default function Home() {
         </div>
       )}
 
-      {/* ========================================== */}
-      {/* 4. VISTA: SUPERMERCADO                     */}
-      {/* ========================================== */}
       {pestañaActiva === 'supermercado' && (
         <div className="max-w-6xl mx-auto animate-fade-in">
           
@@ -758,7 +750,7 @@ export default function Home() {
       )}
 
       {/* ========================================== */}
-      {/* NAVEGACIÓN INFERIOR MÓVIL (BOTTOM NAV BAR) */}
+      {/* NAVEGACIÓN INFERIOR MÓVIL                  */}
       {/* ========================================== */}
       {sesion && (
         <nav className="md:hidden fixed bottom-0 left-0 w-full bg-white/80 backdrop-blur-xl border-t border-gray-200 z-50 flex justify-around items-center p-2 pb-safe shadow-[0_-10px_40px_rgba(0,0,0,0.05)]">
