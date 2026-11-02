@@ -319,9 +319,27 @@ export default function Home() {
     await supabase.from('mercado_lista').delete().eq('id', id);
   }
 
+  // NUEVO: FUNCIÓN PARA VACIAR EL CARRITO ACTUAL
+  async function limpiarCarrito() {
+    if (!sesion?.user?.id) return;
+    const confirmar = window.confirm("¿Estás seguro de vaciar toda la lista para tu próxima compra?");
+    if (!confirmar) return;
+    const { error } = await supabase.from('mercado_lista').delete().eq('user_id', sesion.user.id);
+    if (!error) setMercadoLista([]);
+    else alert("Error al limpiar carrito: " + error.message);
+  }
+
   const totalProyectado = mercadoLista.reduce((suma, item) => suma + ((item.cantidad * item.precio_unitario) - ((item.cantidad * item.precio_unitario) * ((item.descuento_porcentaje || 0) / 100))), 0);
   const totalCarrito = mercadoLista.filter(i => i.comprado).reduce((suma, item) => suma + ((item.cantidad * item.precio_unitario) - ((item.cantidad * item.precio_unitario) * ((item.descuento_porcentaje || 0) / 100))), 0);
   const pendientes = totalProyectado - totalCarrito;
+
+  // NUEVO: RESUMEN DE COMPRAS POR CATEGORÍA
+  const resumenCategoriasMercado = mercadoLista.reduce((acc: Record<string, number>, item: any) => {
+    const cat = item?.categoria || 'General';
+    const precioFinal = (Number(item?.cantidad) * Number(item?.precio_unitario)) * (1 - (Number(item?.descuento_porcentaje) || 0) / 100);
+    acc[cat] = (acc[cat] || 0) + precioFinal;
+    return acc;
+  }, {});
 
   if (!sesion && !cargandoGlobal) {
     return (
@@ -628,6 +646,7 @@ export default function Home() {
       {/* 4. VISTA: SUPERMERCADO */}
       {pestañaActiva === 'supermercado' && (
         <div className="max-w-6xl mx-auto animate-fade-in">
+          
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
             <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm flex flex-col justify-center">
               <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">Límite Presupuesto</span>
@@ -649,6 +668,21 @@ export default function Home() {
               <p className="text-4xl font-black mt-2 tracking-tight">${pendientes.toLocaleString('es-CO')}</p>
             </div>
           </div>
+
+          {/* NUEVO: RESUMEN POR CATEGORÍAS */}
+          {Object.keys(resumenCategoriasMercado).length > 0 && (
+            <div className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 mb-8">
+              <h3 className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-4">Resumen de Inversión por Categoría</h3>
+              <div className="flex flex-wrap gap-3">
+                {Object.entries(resumenCategoriasMercado).map(([cat, total]: any) => (
+                  <div key={cat} className="flex items-center gap-2 bg-gray-50 px-4 py-2 rounded-xl border border-gray-100">
+                    <span className="font-bold text-slate-700 text-sm">{cat}</span>
+                    <span className="font-black text-blue-600">${Number(total).toLocaleString('es-CO')}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             <div className="lg:col-span-1 flex flex-col gap-6">
@@ -689,7 +723,14 @@ export default function Home() {
 
             <div className="lg:col-span-2">
               <div className="bg-white p-6 md:p-8 rounded-3xl shadow-sm border border-gray-100 min-h-[600px]">
-                <h3 className="text-2xl font-black text-slate-800 mb-8 flex items-center gap-3">🛒 Compra Actual</h3>
+                
+                {/* NUEVO: ENCABEZADO CON BOTÓN DE VACIAR */}
+                <div className="flex justify-between items-center mb-8">
+                  <h3 className="text-2xl font-black text-slate-800 flex items-center gap-3">🛒 Compra Actual</h3>
+                  {mercadoLista.length > 0 && (
+                    <button onClick={limpiarCarrito} className="text-xs font-bold text-red-500 bg-red-50 hover:bg-red-500 hover:text-white px-4 py-2 rounded-xl transition-all active:scale-95 shadow-sm">🗑️ Vaciar Lista</button>
+                  )}
+                </div>
                 
                 {mercadoLista.length === 0 ? (
                    <div className="flex flex-col items-center justify-center h-80 text-gray-400 bg-gray-50 rounded-3xl border-2 border-dashed border-gray-200">
