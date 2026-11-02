@@ -10,16 +10,16 @@ interface FinancesTabProps {
   onGastoAgregado: () => void;
 }
 
-// Paleta minimalista en tonos grises elegantes
+// Paleta minimalista de marrón de alta calidad
 const coloresCategorias = [
-  'bg-zinc-900', 
-  'bg-zinc-700', 
-  'bg-zinc-500', 
-  'bg-zinc-400', 
-  'bg-zinc-300', 
-  'bg-slate-800', 
-  'bg-slate-600', 
-  'bg-slate-400'
+  'bg-[#2D1C14]', 
+  'bg-[#4A3225]', 
+  'bg-[#6F4A39]', 
+  'bg-[#8D624D]', 
+  'bg-[#AB7F68]', 
+  'bg-[#3E271D]', 
+  'bg-[#55382B]', 
+  'bg-[#C89F89]'
 ];
 
 export default function FinancesTab({ gastos, sesion, strHoy, onGastoAgregado }: FinancesTabProps) {
@@ -96,15 +96,15 @@ export default function FinancesTab({ gastos, sesion, strHoy, onGastoAgregado }:
       
       {/* Distribución del Presupuesto Total */}
       {gastos.length > 0 && (
-        <div className="bg-white p-6 md:p-8 rounded-3xl shadow-[0_2px_12px_rgba(0,0,0,0.03)] border border-zinc-200/80">
-          <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block mb-1">
+        <div className="bg-white p-6 md:p-8 rounded-3xl shadow-[0_2px_16px_rgba(45,28,20,0.03)] border border-[#EADBCE]/80">
+          <span className="text-[10px] font-bold uppercase tracking-wider text-[#8D6B57] block mb-1">
             Distribución del Presupuesto Total
           </span>
-          <p className="text-3xl md:text-4xl font-extrabold text-zinc-900 mb-6 tracking-tight">
+          <p className="text-3xl md:text-4xl font-extrabold text-[#2D1C14] mb-6 tracking-tight">
             ${totalGastosMes.toLocaleString('es-CO')}
           </p>
           
-          <div className="w-full h-3 rounded-full flex overflow-hidden mb-4 bg-zinc-100">
+          <div className="w-full h-3 rounded-full flex overflow-hidden mb-4 bg-[#FAF5F0]">
             {Object.entries(categoriasGastos).map(([cat, montoCat], i) => {
               const valorMonto = Number(montoCat) || 0;
               return (
@@ -122,9 +122,9 @@ export default function FinancesTab({ gastos, sesion, strHoy, onGastoAgregado }:
             {Object.entries(categoriasGastos).map(([cat, montoCat], i) => {
               const valorMonto = Number(montoCat) || 0;
               return (
-                <div key={cat} className="flex items-center gap-1.5 text-xs font-bold text-zinc-700 bg-zinc-50 px-2.5 py-1 rounded-lg border border-zinc-200/60">
+                <div key={cat} className="flex items-center gap-1.5 text-xs font-bold text-[#4A3225] bg-[#FAF5F0] px-2.5 py-1 rounded-lg border border-[#EADBCE]/60">
                   <span className={`w-2 h-2 rounded-full ${coloresCategorias[i % coloresCategorias.length]}`}></span>
-                  {cat} <span className="text-zinc-400 font-medium ml-0.5">{totalGastosMes > 0 ? ((valorMonto / totalGastosMes) * 100).toFixed(0) : 0}%</span>
+                  {cat} <span className="text-[#8D6B57] font-medium ml-0.5">{totalGastosMes > 0 ? ((valorMonto / totalGastosMes) * 100).toFixed(0) : 0}%</span>
                 </div>
               );
             })}
@@ -133,10 +133,10 @@ export default function FinancesTab({ gastos, sesion, strHoy, onGastoAgregado }:
       )}
 
       {/* Barra de Acciones y Filtros */}
-      <div className="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-3 bg-white p-3.5 rounded-3xl border border-zinc-200/80 shadow-[0_2px_12px_rgba(0,0,0,0.03)]">
+      <div className="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-3 bg-white p-3.5 rounded-3xl border border-[#EADBCE]/80 shadow-[0_2px_16px_rgba(45,28,20,0.03)]">
         <button 
           onClick={() => setMostrarFormulario(!mostrarFormulario)}
-          className="bg-zinc-900 hover:bg-zinc-800 text-white font-bold px-4 py-2.5 rounded-2xl active:scale-95 transition-all flex items-center justify-center gap-2 shadow-sm text-xs"
+          className="bg-[#2D1C14] hover:bg-[#3E271D] text-white font-bold px-4 py-2.5 rounded-2xl active:scale-95 transition-all flex items-center justify-center gap-2 shadow-xs text-xs"
         >
           <span>{mostrarFormulario ? '✕ Cerrar' : '➕ Nuevo Gasto'}</span>
         </button>
@@ -147,19 +147,19 @@ export default function FinancesTab({ gastos, sesion, strHoy, onGastoAgregado }:
             placeholder="Buscar por concepto o categoría..." 
             value={busqueda} 
             onChange={(e) => setBusqueda(e.target.value)} 
-            className="p-2 px-3 text-xs font-medium border border-zinc-200 rounded-xl bg-zinc-50 focus:bg-white focus:border-zinc-900 outline-none w-full sm:w-60 transition-all placeholder:text-zinc-400" 
+            className="p-2 px-3 text-xs font-medium border border-[#EADBCE] rounded-xl bg-[#FAF5F0]/50 focus:bg-white focus:border-[#2D1C14] text-[#2D1C14] outline-none w-full sm:w-60 transition-all placeholder:text-[#8D6B57]/60" 
           />
 
-          <div className="flex gap-1 bg-zinc-100 p-1 rounded-xl text-xs font-bold">
+          <div className="flex gap-1 bg-[#FAF5F0] p-1 rounded-xl text-xs font-bold border border-[#EADBCE]/60">
             <button
               onClick={() => setFiltroEstado('todos')}
-              className={`px-3 py-1.5 rounded-lg transition-all ${filtroEstado === 'todos' ? 'bg-white text-zinc-900 shadow-xs' : 'text-zinc-500 hover:text-zinc-800'}`}
+              className={`px-3 py-1.5 rounded-lg transition-all ${filtroEstado === 'todos' ? 'bg-[#2D1C14] text-white shadow-xs' : 'text-[#6F4A39] hover:text-[#2D1C14]'}`}
             >
               Todos ({gastos.length})
             </button>
             <button
               onClick={() => setFiltroEstado('urgentes')}
-              className={`px-3 py-1.5 rounded-lg transition-all ${filtroEstado === 'urgentes' ? 'bg-white text-zinc-900 shadow-xs font-extrabold' : 'text-zinc-500 hover:text-zinc-800'}`}
+              className={`px-3 py-1.5 rounded-lg transition-all ${filtroEstado === 'urgentes' ? 'bg-[#2D1C14] text-white shadow-xs font-extrabold' : 'text-[#6F4A39] hover:text-[#2D1C14]'}`}
             >
               Urgentes
             </button>
@@ -169,58 +169,58 @@ export default function FinancesTab({ gastos, sesion, strHoy, onGastoAgregado }:
 
       {/* Formulario para Agregar Gasto */}
       {mostrarFormulario && (
-        <form onSubmit={agregarGasto} className="bg-white p-6 md:p-8 rounded-3xl shadow-[0_2px_12px_rgba(0,0,0,0.03)] border border-zinc-200/80 animate-fade-in space-y-4">
-          <h3 className="text-lg font-bold text-zinc-900">Registrar Nuevo Compromiso Financiero</h3>
+        <form onSubmit={agregarGasto} className="bg-white p-6 md:p-8 rounded-3xl shadow-[0_2px_16px_rgba(45,28,20,0.03)] border border-[#EADBCE]/80 animate-fade-in space-y-4">
+          <h3 className="text-lg font-bold text-[#2D1C14]">Registrar Nuevo Compromiso Financiero</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider block mb-1">Concepto</label>
+              <label className="text-xs font-bold text-[#8D6B57] uppercase tracking-wider block mb-1">Concepto</label>
               <input 
                 type="text" 
                 placeholder="Ej. Arriendo, Internet, Crédito" 
                 value={concepto} 
                 onChange={(e) => setConcepto(e.target.value)} 
-                className="w-full p-3 border border-zinc-200 rounded-xl bg-zinc-50 focus:bg-white focus:border-zinc-900 outline-none font-bold text-sm transition-all" 
+                className="w-full p-3 border border-[#EADBCE] rounded-xl bg-[#FAF5F0]/50 focus:bg-white focus:border-[#2D1C14] text-[#2D1C14] outline-none font-bold text-sm transition-all" 
                 required 
               />
             </div>
             <div>
-              <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider block mb-1">Categoría</label>
+              <label className="text-xs font-bold text-[#8D6B57] uppercase tracking-wider block mb-1">Categoría</label>
               <input 
                 type="text" 
                 placeholder="Ej. Vivienda, Servicios, Personal" 
                 value={categoria} 
                 onChange={(e) => setCategoria(e.target.value)} 
-                className="w-full p-3 border border-zinc-200 rounded-xl bg-zinc-50 focus:bg-white focus:border-zinc-900 outline-none text-sm transition-all" 
+                className="w-full p-3 border border-[#EADBCE] rounded-xl bg-[#FAF5F0]/50 focus:bg-white focus:border-[#2D1C14] text-[#2D1C14] outline-none text-sm transition-all" 
               />
             </div>
             <div>
-              <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider block mb-1">Monto Total</label>
+              <label className="text-xs font-bold text-[#8D6B57] uppercase tracking-wider block mb-1">Monto Total</label>
               <div className="relative">
-                <span className="absolute left-3.5 top-3 text-zinc-400 font-bold">$</span>
+                <span className="absolute left-3.5 top-3 text-[#8D6B57] font-bold">$</span>
                 <input 
                   type="number" 
                   placeholder="0" 
                   value={monto} 
                   onChange={(e) => setMonto(e.target.value)} 
-                  className="w-full p-3 pl-8 border border-zinc-200 rounded-xl bg-zinc-50 focus:bg-white focus:border-zinc-900 outline-none font-bold text-sm transition-all" 
+                  className="w-full p-3 pl-8 border border-[#EADBCE] rounded-xl bg-[#FAF5F0]/50 focus:bg-white focus:border-[#2D1C14] text-[#2D1C14] outline-none font-bold text-sm transition-all" 
                   required 
                 />
               </div>
             </div>
             <div>
-              <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider block mb-1">Fecha de Vencimiento</label>
+              <label className="text-xs font-bold text-[#8D6B57] uppercase tracking-wider block mb-1">Fecha de Vencimiento</label>
               <input 
                 type="date" 
                 value={fecha} 
                 onChange={(e) => setFecha(e.target.value)} 
-                className="w-full p-3 border border-zinc-200 rounded-xl bg-zinc-50 focus:bg-white focus:border-zinc-900 outline-none text-sm transition-all" 
+                className="w-full p-3 border border-[#EADBCE] rounded-xl bg-[#FAF5F0]/50 focus:bg-white focus:border-[#2D1C14] text-[#2D1C14] outline-none text-sm transition-all" 
               />
             </div>
           </div>
           <button 
             type="submit" 
             disabled={guardando}
-            className="w-full bg-zinc-900 text-white font-bold py-3.5 rounded-xl hover:bg-zinc-800 active:scale-95 transition-all text-sm shadow-sm disabled:opacity-50"
+            className="w-full bg-[#2D1C14] text-white font-bold py-3.5 rounded-xl hover:bg-[#3E271D] active:scale-95 transition-all text-sm shadow-xs disabled:opacity-50"
           >
             {guardando ? 'Guardando...' : 'Guardar Compromiso'}
           </button>
@@ -229,10 +229,10 @@ export default function FinancesTab({ gastos, sesion, strHoy, onGastoAgregado }:
       
       {/* Grid de Gastos con Espaciado y Distribución Equilibrada */}
       {gastosFiltrados.length === 0 ? (
-        <div className="bg-white p-12 rounded-3xl border border-zinc-200/80 text-center text-zinc-400">
+        <div className="bg-white p-12 rounded-3xl border border-[#EADBCE]/80 text-center text-[#8D6B57]">
           <p className="text-3xl mb-2">💳</p>
-          <p className="font-bold text-zinc-700 text-sm">No se encontraron compromisos financieros.</p>
-          <p className="text-xs text-zinc-400 mt-1">Prueba cambiando los filtros o agregando uno nuevo.</p>
+          <p className="font-bold text-[#2D1C14] text-sm">No se encontraron compromisos financieros.</p>
+          <p className="text-xs text-[#8D6B57] mt-1">Prueba cambiando los filtros o agregando uno nuevo.</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5 md:gap-6 items-start">
