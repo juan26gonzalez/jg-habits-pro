@@ -10,7 +10,7 @@ const supabase = createClient(supabaseUrl, supabaseKey);
 // ==========================================
 // COMPONENTE: TARJETA DE FINANZAS
 // ==========================================
-function TarjetaFinanzas({ gasto, sesion }: any) {
+function TarjetaFinanzas({ gasto, sesion, strHoy }: any) {
   const [aportes, setAportes] = useState<any[]>([]);
   const [nombreIntegrante, setNombreIntegrante] = useState('');
   const [montoAporte, setMontoAporte] = useState('');
@@ -31,6 +31,26 @@ function TarjetaFinanzas({ gasto, sesion }: any) {
   const restante = montoTotal - totalAportado;
   const porcentaje = montoTotal > 0 ? Math.min(100, (totalAportado / montoTotal) * 100) : 0;
 
+  // NUEVO: CÁLCULO DE ALERTA DE VENCIMIENTO
+  let diasParaVencer = null;
+  let esUrgente = false;
+  let estaVencido = false;
+  
+  if (gasto.fecha_vencimiento && strHoy) {
+    // Usamos T12:00:00 para evitar saltos de zona horaria al comparar
+    const fVenc = new Date(`${gasto.fecha_vencimiento}T12:00:00`);
+    const fHoy = new Date(`${strHoy}T12:00:00`);
+    const diffTime = fVenc.getTime() - fHoy.getTime();
+    diasParaVencer = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    esUrgente = diasParaVencer >= 0 && diasParaVencer <= 3;
+    estaVencido = diasParaVencer < 0;
+  }
+
+  // Estilos dinámicos del borde según el estado
+  const bordeEstado = porcentaje >= 100 
+    ? 'border-green-300 ring-2 ring-green-50 shadow-green-100' 
+    : (estaVencido ? 'border-red-400 ring-2 ring-red-50 shadow-red-100' : (esUrgente ? 'border-amber-400 ring-2 ring-amber-50 shadow-amber-100' : 'border-gray-100'));
+
   async function agregarAporte(e: any) {
     e.preventDefault();
     if (!nombreIntegrante || !montoAporte) return;
@@ -46,19 +66,28 @@ function TarjetaFinanzas({ gasto, sesion }: any) {
   }
 
   return (
-    <div className="border border-gray-100 rounded-3xl p-6 md:p-8 shadow-sm bg-white hover:shadow-lg hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between">
+    <div className={`rounded-3xl p-6 md:p-8 bg-white hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between shadow-sm hover:shadow-lg ${bordeEstado}`}>
       <div>
-        <div className="flex justify-between items-start mb-4">
-          <span className="text-xs font-bold uppercase tracking-wider text-blue-700 bg-blue-50 px-3 py-1.5 rounded-full">{gasto.categoria || 'General'}</span>
-          <span className="text-xs font-bold text-gray-500 bg-gray-50 border border-gray-100 px-2 py-1.5 rounded-lg">Vence: {gasto.fecha_vencimiento || 'Sin fecha'}</span>
+        <div className="flex justify-between items-start mb-4 gap-2">
+          <span className="text-[10px] font-black uppercase tracking-widest text-slate-600 bg-slate-100 px-3 py-1.5 rounded-xl truncate">{gasto.categoria || 'General'}</span>
+          
+          {/* NUEVO: ETIQUETA DE VENCIMIENTO DINÁMICA */}
+          <span className={`text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-xl whitespace-nowrap ${porcentaje >= 100 ? 'bg-green-100 text-green-700' : (estaVencido ? 'bg-red-100 text-red-700 animate-pulse' : (esUrgente ? 'bg-amber-100 text-amber-700' : 'bg-gray-50 text-gray-500 border border-gray-100'))}`}>
+            {porcentaje >= 100 ? 'Pagado ✔️' : (
+              gasto.fecha_vencimiento 
+                ? (estaVencido ? `Vencido (${Math.abs(diasParaVencer!)}d)` : (esUrgente ? `¡Vence en ${diasParaVencer}d!` : `Vence: ${gasto.fecha_vencimiento}`)) 
+                : 'Sin fecha'
+            )}
+          </span>
         </div>
+        
         <h3 className="text-xl md:text-2xl font-bold text-gray-800">{gasto.concepto}</h3>
         <p className="text-3xl md:text-4xl font-black text-slate-900 mt-1 tracking-tight">${montoTotal.toLocaleString('es-CO')}</p>
         
         <div className="mt-6 p-4 bg-gray-50 rounded-2xl border border-gray-100">
           <div className="flex justify-between text-sm font-semibold mb-2">
             <span className="text-gray-500">Recaudado: <span className="text-gray-800">${totalAportado.toLocaleString('es-CO')}</span></span>
-            <span className={porcentaje >= 100 ? "text-green-600" : "text-blue-600"}>{porcentaje.toFixed(0)}%</span>
+            <span className={porcentaje >= 100 ? "text-green-600 font-black" : "text-blue-600 font-black"}>{porcentaje.toFixed(0)}%</span>
           </div>
           <div className="w-full bg-gray-200 rounded-full h-3 mb-3 overflow-hidden">
             <div className={`h-3 rounded-full transition-all duration-1000 ease-out ${porcentaje >= 100 ? 'bg-gradient-to-r from-green-400 to-green-500' : 'bg-gradient-to-r from-blue-500 to-indigo-500'}`} style={{ width: `${porcentaje}%` }}></div>
@@ -68,11 +97,11 @@ function TarjetaFinanzas({ gasto, sesion }: any) {
 
         {aportes.length > 0 && (
           <div className="mt-4 p-4 bg-white rounded-2xl border border-gray-100 shadow-sm">
-            <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Aportes registrados</h4>
+            <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3">Aportes registrados</h4>
             <ul className="space-y-3">
               {aportes.map((ap) => (
                 <li key={ap.id} className="flex justify-between text-sm items-center">
-                  <span className="font-semibold text-slate-700 flex items-center gap-2"><div className="w-6 h-6 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center text-xs">{ap.integrante.charAt(0)}</div>{ap.integrante}</span>
+                  <span className="font-semibold text-slate-700 flex items-center gap-2"><div className="w-6 h-6 rounded-full bg-slate-100 text-slate-700 flex items-center justify-center text-xs font-black">{ap.integrante.charAt(0)}</div>{ap.integrante}</span>
                   {editandoId === ap.id ? (
                     <div className="flex gap-2 items-center">
                       <input type="number" value={nuevoMonto} onChange={(e) => setNuevoMonto(e.target.value)} className="w-24 p-1.5 text-sm border border-blue-400 rounded-lg bg-white" autoFocus />
@@ -81,7 +110,7 @@ function TarjetaFinanzas({ gasto, sesion }: any) {
                     </div>
                   ) : (
                     <div className="flex gap-2 items-center">
-                      <span className="text-slate-800 font-bold">${Number(ap.monto_cuota).toLocaleString('es-CO')}</span>
+                      <span className="text-slate-800 font-black">${Number(ap.monto_cuota).toLocaleString('es-CO')}</span>
                       <button onClick={() => { setEditandoId(ap.id); setNuevoMonto(ap.monto_cuota); }} className="text-gray-300 hover:text-blue-600 transition-colors active:scale-95">✏️</button>
                     </div>
                   )}
@@ -95,7 +124,7 @@ function TarjetaFinanzas({ gasto, sesion }: any) {
         <form onSubmit={agregarAporte} className="mt-5 pt-5 border-t border-gray-100 flex gap-2">
           <input type="text" placeholder="Integrante" value={nombreIntegrante} onChange={(e) => setNombreIntegrante(e.target.value)} className="w-1/2 p-3 text-sm border border-gray-200 rounded-xl bg-gray-50 focus:bg-white focus:ring-2 focus:ring-blue-500 transition-all outline-none" required />
           <input type="number" placeholder="Monto" value={montoAporte} onChange={(e) => setMontoAporte(e.target.value)} className="w-1/2 p-3 text-sm border border-gray-200 rounded-xl bg-gray-50 focus:bg-white focus:ring-2 focus:ring-blue-500 transition-all outline-none" required />
-          <button type="submit" className="bg-slate-900 text-white font-bold p-3 rounded-xl hover:bg-slate-800 active:scale-95 transition-all flex justify-center items-center shadow-md">➕</button>
+          <button type="submit" className="bg-slate-900 text-white font-black p-3 rounded-xl hover:bg-slate-800 active:scale-95 transition-all flex justify-center items-center shadow-md">➕</button>
         </form>
       )}
     </div>
@@ -112,22 +141,18 @@ export default function Home() {
   const [cargandoGlobal, setCargandoGlobal] = useState(true);
   const [errorLogin, setErrorLogin] = useState('');
   
-  // NAVEGACIÓN
   const [pestañaActiva, setPestañaActiva] = useState('calendario'); 
 
-  // VARIABLES DE TIEMPO GLOBALES
   const [mesActual, setMesActual] = useState(0);
   const [anioActual, setAnioActual] = useState(2026);
   const [strHoy, setStrHoy] = useState('');
 
-  // ESTADOS FINANZAS
   const [gastos, setGastos] = useState<any[]>([]);
   const [concepto, setConcepto] = useState('');
   const [categoria, setCategoria] = useState('');
   const [monto, setMonto] = useState('');
   const [fecha, setFecha] = useState('');
 
-  // ESTADOS HÁBITOS
   const [habitosCatalogo, setHabitosCatalogo] = useState<any[]>([]);
   const [registrosHistoricos, setRegistrosHistoricos] = useState<any[]>([]);
   const [nuevoHabitoNombre, setNuevoHabitoNombre] = useState('');
@@ -138,7 +163,6 @@ export default function Home() {
   const [nuevoHabitoDias, setNuevoHabitoDias] = useState<string[]>(diasSemanaOpciones);
   const emojisComunes = ['🏃‍♂️', '💧', '📚', '🏋️‍♂️', '🍎', '🍳', '💤', '💻', '🧘‍♂️', '🧹', '📖', '🚴‍♂️', '💊', '💰', '🚿', '🚗'];
 
-  // ESTADOS SUPERMERCADO
   const [mercadoCatalogo, setMercadoCatalogo] = useState<any[]>([]);
   const [mercadoLista, setMercadoLista] = useState<any[]>([]);
   const [presupuestoMercado, setPresupuestoMercado] = useState(0); 
@@ -147,7 +171,6 @@ export default function Home() {
   const [catUnidad, setCatUnidad] = useState('und');
   const [catCat, setCatCat] = useState('Abarrotes');
 
-  // NUEVO: ESTADOS PARA FILTROS DEL DASHBOARD
   const [filtroHabitos, setFiltroHabitos] = useState(true);
   const [filtroFinanzas, setFiltroFinanzas] = useState(true);
   const [filtroMercado, setFiltroMercado] = useState(true);
@@ -198,7 +221,6 @@ export default function Home() {
     else setErrorLogin('');
   }
 
-  // --- LÓGICA DE FINANZAS ---
   async function agregarGasto(e: any) {
     e.preventDefault();
     if (!concepto || !monto) return;
@@ -207,7 +229,6 @@ export default function Home() {
     else { setConcepto(''); setCategoria(''); setMonto(''); setFecha(''); cargarDatosGenerales(); }
   }
 
-  // --- LÓGICA DE HÁBITOS ---
   function toggleDia(dia: string) {
     if (nuevoHabitoDias.includes(dia)) setNuevoHabitoDias(nuevoHabitoDias.filter(d => d !== dia));
     else setNuevoHabitoDias([...nuevoHabitoDias, dia]);
@@ -235,7 +256,39 @@ export default function Home() {
     }
   }
 
-  // --- LÓGICA DE SUPERMERCADO ---
+  function calcularEstadisticasHabito(habitoId: string) {
+    const ultimos7Dias = Array.from({length: 7}, (_, i) => {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      return d.toISOString().split('T')[0];
+    });
+
+    const historial7Dias = ultimos7Dias.reverse().map(fechaStr => 
+      registrosHistoricos.some(r => r.habito_id === habitoId && r.fecha === fechaStr)
+    );
+
+    let rachaActual = 0;
+    const fechasConRegistro = registrosHistoricos.filter(r => r.habito_id === habitoId).map(r => r.fecha).sort().reverse();
+    
+    if (fechasConRegistro.length > 0) {
+      const d = new Date();
+      let fechaBusqueda = d.toISOString().split('T')[0];
+      
+      if (!fechasConRegistro.includes(fechaBusqueda)) {
+        d.setDate(d.getDate() - 1);
+        fechaBusqueda = d.toISOString().split('T')[0];
+      }
+
+      while (fechasConRegistro.includes(fechaBusqueda)) {
+        rachaActual++;
+        d.setDate(d.getDate() - 1);
+        fechaBusqueda = d.toISOString().split('T')[0];
+      }
+    }
+
+    return { rachaActual, historial7Dias };
+  }
+
   async function crearProductoCatalogo(e: any) {
     e.preventDefault();
     if (!catNombre || !catPrecio) return;
@@ -264,7 +317,6 @@ export default function Home() {
   const totalCarrito = mercadoLista.filter(i => i.comprado).reduce((suma, item) => suma + ((item.cantidad * item.precio_unitario) - ((item.cantidad * item.precio_unitario) * ((item.descuento_porcentaje || 0) / 100))), 0);
   const pendientes = totalProyectado - totalCarrito;
 
-  // --- RENDER LOGIN ---
   if (!sesion && !cargandoGlobal) {
     return (
       <main className="min-h-screen bg-slate-50 flex items-center justify-center p-6 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')]">
@@ -281,7 +333,6 @@ export default function Home() {
     );
   }
 
-  // --- RENDER SKELETON (CARGANDO) ---
   if (cargandoGlobal) {
     return (
       <main className="min-h-screen bg-slate-50 p-8 md:p-12 animate-pulse">
@@ -303,7 +354,6 @@ export default function Home() {
     );
   }
 
-  // GENERACIÓN DEL CALENDARIO MAESTRO CON MEJORAS
   const diasEnMes = new Date(anioActual, mesActual + 1, 0).getDate();
   const primerDiaSemana = new Date(anioActual, mesActual, 1).getDay();
   const celdasCalendario = [];
@@ -323,7 +373,6 @@ export default function Home() {
     const habitosDelDia = registrosHistoricos.filter(r => r.fecha === fechaIteracion);
     const esHoy = fechaIteracion === strHoy;
 
-    // NUEVO: Calcular progreso de hábitos del día
     const indiceDiaSemana = new Date(anioActual, mesActual, d).getDay();
     const strDiaCorto = mapFrecuenciaDias[indiceDiaSemana];
     const habitosProgramadosHoy = habitosCatalogo.filter(h => h.frecuencia && h.frecuencia.includes(strDiaCorto));
@@ -331,8 +380,6 @@ export default function Home() {
 
     celdasCalendario.push(
       <div key={d} className={`p-2 md:p-3 min-h-[100px] border border-gray-200 rounded-2xl shadow-sm transition-all flex flex-col ${esHoy ? 'bg-blue-50/50 border-blue-400 ring-2 ring-blue-200' : 'bg-white hover:border-blue-300 hover:shadow-md'}`}>
-        
-        {/* Cabecera del día con barra de progreso */}
         <div className="flex justify-between items-center mb-2">
           <span className={`font-black text-sm ${esHoy ? 'text-blue-700 bg-blue-200 px-2.5 py-1 rounded-full' : 'text-slate-400'}`}>{d}</span>
           {filtroHabitos && habitosProgramadosHoy.length > 0 && (
@@ -341,8 +388,6 @@ export default function Home() {
             </div>
           )}
         </div>
-
-        {/* Eventos filtrados */}
         <div className="flex flex-col gap-1.5 flex-grow">
           {filtroFinanzas && gastosDelDia.map((g, i) => <span key={`g-${i}`} className="bg-red-100 text-red-800 text-[10px] font-bold px-2 py-1 rounded-lg flex items-center gap-1 truncate shadow-sm">💳 {g.concepto}</span>)}
           {filtroMercado && comprasDelDia.length > 0 && <span className="bg-green-100 text-green-800 text-[10px] font-bold px-2 py-1 rounded-lg flex items-center gap-1 truncate shadow-sm">🛒 Súper ({comprasDelDia.length})</span>}
@@ -363,10 +408,18 @@ export default function Home() {
     { id: 'supermercado', icon: '🛒', label: 'Grocery' }
   ];
 
+  // NUEVO: CÁLCULOS PARA EL DASHBOARD FINANCIERO
+  const categoriasGastos = gastos.reduce((acc, g) => {
+    const cat = g.categoria || 'General';
+    acc[cat] = (acc[cat] || 0) + Number(g.monto_total);
+    return acc;
+  }, {} as Record<string, number>);
+  const totalGastosMes = gastos.reduce((sum, g) => sum + Number(g.monto_total), 0);
+  const coloresCategorias = ['bg-blue-500', 'bg-indigo-500', 'bg-purple-500', 'bg-pink-500', 'bg-rose-500', 'bg-orange-500', 'bg-emerald-500', 'bg-sky-500'];
+
   return (
     <main className="min-h-screen bg-[#F8FAFC] pb-24 md:pb-12 p-4 md:p-8">
       
-      {/* HEADER DESKTOP Y MOBILE */}
       <div className="max-w-6xl mx-auto mb-6 md:mb-8 pt-4 md:pt-0">
         <div className="flex justify-between items-center bg-white p-4 md:p-6 rounded-3xl shadow-sm border border-gray-100">
           <div className="flex items-center gap-3">
@@ -376,7 +429,6 @@ export default function Home() {
           <button onClick={() => supabase.auth.signOut()} className="text-sm font-bold text-gray-400 hover:text-red-500 transition-colors bg-gray-50 px-4 py-2 rounded-xl active:scale-95">Log Out</button>
         </div>
         
-        {/* NAVEGACIÓN DESKTOP */}
         <div className="hidden md:flex gap-2 mt-6 overflow-x-auto scrollbar-hide bg-white p-2 rounded-2xl shadow-sm border border-gray-100 w-max">
           {navItems.map(item => (
             <button 
@@ -395,8 +447,6 @@ export default function Home() {
       {/* ========================================== */}
       {pestañaActiva === 'calendario' && (
         <div className="max-w-6xl mx-auto animate-fade-in">
-          
-          {/* NUEVO: PANEL DE FILTROS SUPERIORES */}
           <div className="flex flex-wrap gap-2 md:gap-3 mb-4 bg-white p-2.5 rounded-2xl border border-gray-100 w-max shadow-sm">
             <span className="text-xs font-black text-gray-400 uppercase tracking-widest flex items-center px-2 mr-1">Filtros:</span>
             <button onClick={() => setFiltroHabitos(!filtroHabitos)} className={`px-4 py-1.5 text-xs font-bold rounded-xl transition-all active:scale-95 ${filtroHabitos ? 'bg-indigo-100 text-indigo-700' : 'bg-gray-50 text-gray-400 opacity-60 border border-gray-200'}`}>🗓️ Hábitos</button>
@@ -483,19 +533,37 @@ export default function Home() {
                     {habitosBloque.length === 0 && <p className="text-sm font-medium text-gray-400 p-4 border-2 border-dashed border-gray-100 rounded-xl text-center">Sin hábitos programados</p>}
                     {habitosBloque.map(habito => {
                       const completadoHoy = registrosHistoricos.some(r => r.habito_id === habito.id && r.fecha === strHoy);
+                      const { rachaActual, historial7Dias } = calcularEstadisticasHabito(habito.id);
+                      
                       return (
-                        <li key={habito.id} onClick={() => marcarHabito(habito.id)} className={`flex items-center gap-4 p-4 rounded-2xl cursor-pointer transition-all active:scale-95 border-2 ${completadoHoy ? 'bg-green-50 border-green-200' : 'bg-white border-gray-100 hover:border-blue-300 hover:shadow-md'}`}>
-                          <span className="text-3xl bg-gray-50 w-12 h-12 flex items-center justify-center rounded-xl">{habito.emoji}</span>
-                          <div className="flex flex-col">
-                            <span className={`font-black text-md ${completadoHoy ? 'text-green-700 line-through opacity-60' : 'text-slate-800'}`}>{habito.nombre}</span>
-                            <div className="flex flex-wrap items-center gap-2 mt-1">
-                              {habito.hora && <span className={`text-xs font-bold ${completadoHoy ? 'text-green-600' : 'text-slate-500'}`}>{habito.hora}</span>}
-                              {habito.frecuencia && <span className={`text-[9px] uppercase font-black px-2 py-0.5 rounded-md ${completadoHoy ? 'bg-green-200 text-green-800' : `${config?.bgTag} ${config?.textTag}`}`}>{habito.frecuencia}</span>}
+                        <li key={habito.id} className={`flex flex-col p-4 rounded-2xl transition-all border-2 ${completadoHoy ? 'bg-green-50/50 border-green-200' : 'bg-white border-gray-100 hover:border-blue-300 hover:shadow-md'}`}>
+                          
+                          <div className="flex items-center gap-4 cursor-pointer active:scale-95" onClick={() => marcarHabito(habito.id)}>
+                            <span className="text-3xl bg-gray-50 w-12 h-12 flex items-center justify-center rounded-xl shrink-0">{habito.emoji}</span>
+                            <div className="flex flex-col flex-grow">
+                              <span className={`font-black text-md ${completadoHoy ? 'text-green-700 line-through opacity-60' : 'text-slate-800'}`}>{habito.nombre}</span>
+                              <div className="flex flex-wrap items-center gap-2 mt-1">
+                                {habito.hora && <span className={`text-xs font-bold ${completadoHoy ? 'text-green-600' : 'text-slate-500'}`}>{habito.hora}</span>}
+                                {habito.frecuencia && <span className={`text-[9px] uppercase font-black px-2 py-0.5 rounded-md ${completadoHoy ? 'bg-green-200 text-green-800' : `${config?.bgTag} ${config?.textTag}`}`}>{habito.frecuencia}</span>}
+                              </div>
+                            </div>
+                            <div className="ml-auto shrink-0">
+                              {completadoHoy ? <span className="text-green-500 text-2xl">✔️</span> : <div className="w-6 h-6 rounded-full border-2 border-gray-300"></div>}
                             </div>
                           </div>
-                          <div className="ml-auto">
-                            {completadoHoy ? <span className="text-green-500 text-2xl">✔️</span> : <div className="w-6 h-6 rounded-full border-2 border-gray-300"></div>}
+
+                          <div className="mt-4 pt-3 border-t border-gray-100 flex items-center justify-between">
+                            <div className="flex items-center gap-1" title={`Racha de ${rachaActual} días seguidos`}>
+                              <span className={`text-lg ${rachaActual > 0 ? 'opacity-100' : 'opacity-20 grayscale'}`}>🔥</span>
+                              <span className="text-sm font-black text-slate-700">{rachaActual} <span className="text-[10px] text-gray-400 uppercase tracking-widest font-bold">días</span></span>
+                            </div>
+                            <div className="flex gap-1" title="Historial de los últimos 7 días">
+                              {historial7Dias.map((completado, idx) => (
+                                <span key={idx} className={`w-2.5 h-2.5 rounded-full ${completado ? 'bg-green-500' : 'bg-gray-200'} ${idx === 6 ? 'ring-2 ring-gray-100 ring-offset-1' : ''}`}></span>
+                              ))}
+                            </div>
                           </div>
+
                         </li>
                       );
                     })}
@@ -508,10 +576,34 @@ export default function Home() {
       )}
 
       {/* ========================================== */}
-      {/* 3. VISTA: FINANZAS                         */}
+      {/* 3. VISTA: FINANZAS CON MEJORAS             */}
       {/* ========================================== */}
       {pestañaActiva === 'finanzas' && (
         <div className="max-w-4xl mx-auto animate-fade-in">
+          
+          {/* NUEVO: DASHBOARD GRÁFICO DE FINANZAS */}
+          {gastos.length > 0 && (
+            <div className="bg-white p-6 md:p-8 rounded-3xl shadow-sm border border-gray-100 mb-8">
+              <h3 className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2">Distribución del Presupuesto Total</h3>
+              <p className="text-3xl font-black text-slate-900 mb-6">${totalGastosMes.toLocaleString('es-CO')}</p>
+              
+              <div className="w-full h-4 rounded-full flex overflow-hidden mb-5 bg-gray-100 shadow-inner">
+                {Object.entries(categoriasGastos).map(([cat, monto], i) => (
+                  <div key={cat} title={`${cat}: $${monto.toLocaleString()}`} className={`h-full transition-all duration-1000 ${coloresCategorias[i % coloresCategorias.length]}`} style={{ width: `${totalGastosMes > 0 ? (monto / totalGastosMes) * 100 : 0}%` }}></div>
+                ))}
+              </div>
+              
+              <div className="flex flex-wrap gap-3 md:gap-4">
+                {Object.entries(categoriasGastos).map(([cat, monto], i) => (
+                  <div key={cat} className="flex items-center gap-1.5 text-xs font-black text-slate-600 bg-gray-50 px-2 py-1 rounded-lg border border-gray-100">
+                    <span className={`w-2.5 h-2.5 rounded-full shadow-sm ${coloresCategorias[i % coloresCategorias.length]}`}></span>
+                    {cat} <span className="text-gray-400 font-bold ml-1">{((monto / totalGastosMes) * 100).toFixed(0)}%</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           <form onSubmit={agregarGasto} className="bg-white p-6 md:p-8 rounded-3xl shadow-sm border border-gray-100 mb-8">
             <h3 className="text-xl font-black text-slate-800 mb-6">➕ Registrar Nuevo Gasto</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
@@ -525,8 +617,9 @@ export default function Home() {
             </div>
             <button type="submit" className="bg-slate-900 text-white font-black py-4 px-6 rounded-2xl hover:bg-slate-800 active:scale-95 transition-all w-full text-lg shadow-lg">Guardar Gasto</button>
           </form>
+          
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
-            {gastos.map((gasto) => <TarjetaFinanzas key={gasto.id} gasto={gasto} sesion={sesion} />)}
+            {gastos.map((gasto) => <TarjetaFinanzas key={gasto.id} gasto={gasto} sesion={sesion} strHoy={strHoy} />)}
           </div>
         </div>
       )}
