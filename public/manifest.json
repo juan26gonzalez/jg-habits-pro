@@ -1,13 +1,19 @@
 {
   "name": "JGM Goals",
   "short_name": "JGM Goals",
-  "description": "Tu sistema operativo personal para finanzas, hábitos y compras.",
+  "description": "Tu sistema operativo personal para finanzas, targets y compras.",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#F8FAFC",
-  "theme_color": "#0F172A",
+  "background_color": "#FAF7F4",
+  "theme_color": "#2D1C14",
   "orientation": "portrait",
   "icons": [
+    {
+      "src": "/icon192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
     {
       "src": "/icon512_maskable.png",
       "sizes": "512x512",

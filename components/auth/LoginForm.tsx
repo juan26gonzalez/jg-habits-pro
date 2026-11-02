@@ -22,7 +22,10 @@ export default function LoginForm() {
   return (
     <main className="min-h-screen bg-[#FAF7F4] flex items-center justify-center p-6">
       <form onSubmit={iniciarSesion} className="bg-white p-8 rounded-3xl shadow-[0_8px_32px_rgba(45,28,20,0.04)] border border-[#EADBCE]/80 w-full max-w-md transition-all">
-        <div className="w-14 h-14 bg-[#2D1C14] text-white rounded-2xl flex items-center justify-center text-2xl shadow-xs mb-5 mx-auto">⚙️</div>
+        <div className="w-16 h-16 bg-[#2D1C14] border border-[#4A3225] rounded-2xl flex flex-col items-center justify-center shadow-xs mb-5 mx-auto select-none">
+          <span className="text-base font-black tracking-widest text-white leading-none">JGM</span>
+          <span className="text-[9px] font-bold tracking-widest text-[#E5C8B4] leading-none mt-1">GOALS</span>
+        </div>
         <h2 className="text-2xl font-extrabold text-[#2D1C14] mb-1 text-center tracking-tight">JGM Goals</h2>
         <p className="text-xs text-[#8D6B57] mb-8 text-center uppercase font-bold tracking-wider">Sistema Operativo Personal</p>
         

@@ -13,8 +13,9 @@ export default function Header({ pestañaActiva, setPestañaActiva, navItems, on
     <header className="max-w-6xl mx-auto mb-6 md:mb-8 pt-4 md:pt-0">
       <div className="flex justify-between items-center bg-white p-4 md:p-6 rounded-3xl shadow-[0_2px_16px_rgba(45,28,20,0.03)] border border-[#EADBCE]/80">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-[#2D1C14] text-white rounded-xl flex items-center justify-center text-lg shadow-xs">
-            ⚙️
+          <div className="w-10 h-10 bg-[#2D1C14] border border-[#4A3225] rounded-xl flex flex-col items-center justify-center shadow-xs select-none">
+            <span className="text-[11px] font-black tracking-widest text-white leading-none">JGM</span>
+            <span className="text-[7px] font-bold tracking-widest text-[#E5C8B4] leading-none mt-0.5">GOALS</span>
           </div>
           <div>
             <h1 className="text-xl md:text-2xl font-extrabold text-[#2D1C14] tracking-tight">JGM Goals</h1>
