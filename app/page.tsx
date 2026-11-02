@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { createClient } from '@supabase/supabase-js';
 
 const supabaseUrl = 'https://ktxbonxgrnpzearsgvtc.supabase.co';
@@ -10,35 +10,40 @@ const supabase = createClient(supabaseUrl, supabaseKey);
 // ==========================================
 // COMPONENTE: TARJETA DE FINANZAS
 // ==========================================
-function TarjetaFinanzas({ gasto, sesion, strHoy }: any) {
+interface TarjetaFinanzasProps {
+  gasto: any;
+  sesion: any;
+  strHoy: string;
+}
+
+function TarjetaFinanzas({ gasto, sesion, strHoy }: TarjetaFinanzasProps) {
   const [aportes, setAportes] = useState<any[]>([]);
   const [nombreIntegrante, setNombreIntegrante] = useState('');
   const [montoAporte, setMontoAporte] = useState('');
   const [editandoId, setEditandoId] = useState<string | null>(null);
   const [nuevoMonto, setNuevoMonto] = useState('');
 
-  const montoTotal = Number(gasto.monto_total) || 0;
+  const montoTotal = Number(gasto?.monto_total) || 0;
 
   useEffect(() => {
     async function cargarAportes() {
+      if (!gasto?.id) return;
       const { data } = await supabase.from('finanzas_cuotas_familia').select('*').eq('gasto_id', gasto.id);
       if (data) setAportes(data);
     }
     cargarAportes();
-  }, [gasto.id]);
+  }, [gasto?.id]);
 
-  const totalAportado = aportes.reduce((suma, ap) => suma + Number(ap.monto_cuota || 0), 0);
+  const totalAportado = aportes.reduce((suma, ap) => suma + (Number(ap?.monto_cuota) || 0), 0);
   const restante = montoTotal - totalAportado;
   const porcentaje = montoTotal > 0 ? Math.min(100, (totalAportado / montoTotal) * 100) : 0;
 
-  // NUEVO: CÁLCULO DE ALERTA DE VENCIMIENTO SEGURO
   let diasParaVencer = 0;
   let esUrgente = false;
   let estaVencido = false;
-  let tieneFecha = false;
-  
-  if (gasto.fecha_vencimiento && strHoy) {
-    tieneFecha = true;
+  const tieneFecha = Boolean(gasto?.fecha_vencimiento && strHoy);
+
+  if (tieneFecha) {
     const fVenc = new Date(`${gasto.fecha_vencimiento}T12:00:00`);
     const fHoy = new Date(`${strHoy}T12:00:00`);
     const diffTime = fVenc.getTime() - fHoy.getTime();
@@ -51,9 +56,9 @@ function TarjetaFinanzas({ gasto, sesion, strHoy }: any) {
     ? 'border-green-300 ring-2 ring-green-50 shadow-green-100' 
     : (estaVencido ? 'border-red-400 ring-2 ring-red-50 shadow-red-100' : (esUrgente ? 'border-amber-400 ring-2 ring-amber-50 shadow-amber-100' : 'border-gray-100'));
 
-  async function agregarAporte(e: any) {
+  async function agregarAporte(e: React.FormEvent) {
     e.preventDefault();
-    if (!nombreIntegrante || !montoAporte) return;
+    if (!nombreIntegrante || !montoAporte || !sesion?.user?.id || !gasto?.id) return;
     const { data, error } = await supabase.from('finanzas_cuotas_familia').insert([{ gasto_id: gasto.id, integrante: nombreIntegrante, monto_cuota: Number(montoAporte), user_id: sesion.user.id, pagado: true }]).select();
     if (error) alert(`Error: ${error.message}`);
     else if (data) { setAportes([...aportes, data[0]]); setNombreIntegrante(''); setMontoAporte(''); }
@@ -69,7 +74,7 @@ function TarjetaFinanzas({ gasto, sesion, strHoy }: any) {
     <div className={`rounded-3xl p-6 md:p-8 bg-white hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between shadow-sm hover:shadow-lg ${bordeEstado}`}>
       <div>
         <div className="flex justify-between items-start mb-4 gap-2">
-          <span className="text-[10px] font-black uppercase tracking-widest text-slate-600 bg-slate-100 px-3 py-1.5 rounded-xl truncate">{gasto.categoria || 'General'}</span>
+          <span className="text-[10px] font-black uppercase tracking-widest text-slate-600 bg-slate-100 px-3 py-1.5 rounded-xl truncate">{gasto?.categoria || 'General'}</span>
           
           <span className={`text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-xl whitespace-nowrap ${porcentaje >= 100 ? 'bg-green-100 text-green-700' : (estaVencido ? 'bg-red-100 text-red-700 animate-pulse' : (esUrgente ? 'bg-amber-100 text-amber-700' : 'bg-gray-50 text-gray-500 border border-gray-100'))}`}>
             {porcentaje >= 100 ? 'Pagado ✔️' : (
@@ -80,7 +85,7 @@ function TarjetaFinanzas({ gasto, sesion, strHoy }: any) {
           </span>
         </div>
         
-        <h3 className="text-xl md:text-2xl font-bold text-gray-800">{gasto.concepto}</h3>
+        <h3 className="text-xl md:text-2xl font-bold text-gray-800">{gasto?.concepto}</h3>
         <p className="text-3xl md:text-4xl font-black text-slate-900 mt-1 tracking-tight">${montoTotal.toLocaleString('es-CO')}</p>
         
         <div className="mt-6 p-4 bg-gray-50 rounded-2xl border border-gray-100">
@@ -100,7 +105,7 @@ function TarjetaFinanzas({ gasto, sesion, strHoy }: any) {
             <ul className="space-y-3">
               {aportes.map((ap) => (
                 <li key={ap.id} className="flex justify-between text-sm items-center">
-                  <span className="font-semibold text-slate-700 flex items-center gap-2"><div className="w-6 h-6 rounded-full bg-slate-100 text-slate-700 flex items-center justify-center text-xs font-black">{ap.integrante.charAt(0)}</div>{ap.integrante}</span>
+                  <span className="font-semibold text-slate-700 flex items-center gap-2"><div className="w-6 h-6 rounded-full bg-slate-100 text-slate-700 flex items-center justify-center text-xs font-black">{ap.integrante ? ap.integrante.charAt(0) : '?'}</div>{ap.integrante}</span>
                   {editandoId === ap.id ? (
                     <div className="flex gap-2 items-center">
                       <input type="number" value={nuevoMonto} onChange={(e) => setNuevoMonto(e.target.value)} className="w-24 p-1.5 text-sm border border-blue-400 rounded-lg bg-white" autoFocus />
@@ -110,7 +115,7 @@ function TarjetaFinanzas({ gasto, sesion, strHoy }: any) {
                   ) : (
                     <div className="flex gap-2 items-center">
                       <span className="text-slate-800 font-black">${Number(ap.monto_cuota).toLocaleString('es-CO')}</span>
-                      <button onClick={() => { setEditandoId(ap.id); setNuevoMonto(ap.monto_cuota); }} className="text-gray-300 hover:text-blue-600 transition-colors active:scale-95">✏️</button>
+                      <button onClick={() => { setEditandoId(ap.id); setNuevoMonto(String(ap.monto_cuota || '')); }} className="text-gray-300 hover:text-blue-600 transition-colors active:scale-95">✏️</button>
                     </div>
                   )}
                 </li>
@@ -212,7 +217,7 @@ export default function Home() {
     return () => subscription.unsubscribe();
   }, []);
 
-  async function iniciarSesion(e: any) {
+  async function iniciarSesion(e: React.FormEvent) {
     e.preventDefault();
     setErrorLogin('Cargando...');
     const { error } = await supabase.auth.signInWithPassword({ email, password });
@@ -220,9 +225,9 @@ export default function Home() {
     else setErrorLogin('');
   }
 
-  async function agregarGasto(e: any) {
+  async function agregarGasto(e: React.FormEvent) {
     e.preventDefault();
-    if (!concepto || !monto) return;
+    if (!concepto || !monto || !sesion?.user?.id) return;
     const { error } = await supabase.from('finanzas_gastos').insert([{ concepto, categoria: categoria || 'General', monto_total: Number(monto), fecha_vencimiento: fecha || null, user_id: sesion.user.id }]);
     if (error) alert(`Error al guardar: ${error.message}`);
     else { setConcepto(''); setCategoria(''); setMonto(''); setFecha(''); cargarDatosGenerales(); }
@@ -233,9 +238,9 @@ export default function Home() {
     else setNuevoHabitoDias([...nuevoHabitoDias, dia]);
   }
 
-  async function agregarHabito(e: any) {
+  async function agregarHabito(e: React.FormEvent) {
     e.preventDefault();
-    if (!nuevoHabitoNombre || !nuevoHabitoEmoji || !nuevoHabitoHora) return;
+    if (!nuevoHabitoNombre || !nuevoHabitoEmoji || !nuevoHabitoHora || !sesion?.user?.id) return;
     if (nuevoHabitoDias.length === 0) return alert("Debes seleccionar al menos un día para este hábito.");
     
     const { error } = await supabase.from('habitos_catalogo').insert([{ nombre: nuevoHabitoNombre, emoji: nuevoHabitoEmoji, hora: nuevoHabitoHora, bloque: nuevoHabitoBloque, frecuencia: nuevoHabitoDias.join(', '), user_id: sesion.user.id }]);
@@ -245,6 +250,7 @@ export default function Home() {
   }
 
   async function marcarHabito(habitoId: string) {
+    if (!sesion?.user?.id) return;
     const registroExistente = registrosHistoricos.find(r => r.habito_id === habitoId && r.fecha === strHoy);
     if (registroExistente) {
       const { error } = await supabase.from('habitos_registros').delete().eq('id', registroExistente.id);
@@ -288,15 +294,16 @@ export default function Home() {
     return { rachaActual, historial7Dias };
   }
 
-  async function crearProductoCatalogo(e: any) {
+  async function crearProductoCatalogo(e: React.FormEvent) {
     e.preventDefault();
-    if (!catNombre || !catPrecio) return;
+    if (!catNombre || !catPrecio || !sesion?.user?.id) return;
     const { error } = await supabase.from('mercado_catalogo').insert([{ nombre: catNombre, categoria: catCat, precio_referencia: Number(catPrecio), unidad: catUnidad, user_id: sesion.user.id }]);
     if (error) alert(`Error: ${error.message}`);
     else { setCatNombre(''); setCatPrecio(''); cargarDatosGenerales(); }
   }
 
   async function agregarAlCarrito(producto: any) {
+    if (!sesion?.user?.id) return;
     if (mercadoLista.some(item => item.producto_nombre === producto.nombre)) return alert("Este producto ya está en tu lista actual.");
     const { data, error } = await supabase.from('mercado_lista').insert([{ producto_nombre: producto.nombre, categoria: producto.categoria, cantidad: 1, precio_unitario: producto.precio_referencia, descuento_porcentaje: 0, comprado: false, user_id: sesion.user.id }]).select();
     if (!error && data) setMercadoLista([...mercadoLista, data[0]]);
@@ -316,7 +323,6 @@ export default function Home() {
   const totalCarrito = mercadoLista.filter(i => i.comprado).reduce((suma, item) => suma + ((item.cantidad * item.precio_unitario) - ((item.cantidad * item.precio_unitario) * ((item.descuento_porcentaje || 0) / 100))), 0);
   const pendientes = totalProyectado - totalCarrito;
 
-  // VERIFICACIÓN DE SESIÓN (RENDER ÚNICO)
   if (!sesion && !cargandoGlobal) {
     return (
       <main className="min-h-screen bg-slate-50 flex items-center justify-center p-6 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')]">
@@ -354,7 +360,6 @@ export default function Home() {
     );
   }
 
-  // GENERACIÓN DEL CALENDARIO MAESTRO
   const diasEnMes = new Date(anioActual, mesActual + 1, 0).getDate();
   const primerDiaSemana = new Date(anioActual, mesActual, 1).getDay();
   const celdasCalendario = [];
@@ -409,13 +414,12 @@ export default function Home() {
     { id: 'supermercado', icon: '🛒', label: 'Grocery' }
   ];
 
-  // CÁLCULOS PARA EL DASHBOARD FINANCIERO
-  const categoriasGastos = gastos.reduce((acc, g) => {
-    const cat = g.categoria || 'General';
-    acc[cat] = (acc[cat] || 0) + Number(g.monto_total);
+  const categoriasGastos = gastos.reduce((acc: Record<string, number>, g: any) => {
+    const cat = g?.categoria || 'General';
+    acc[cat] = (acc[cat] || 0) + (Number(g?.monto_total) || 0);
     return acc;
-  }, {} as Record<string, number>);
-  const totalGastosMes = gastos.reduce((sum, g) => sum + Number(g.monto_total), 0);
+  }, {});
+  const totalGastosMes = gastos.reduce((sum: number, g: any) => sum + (Number(g?.monto_total) || 0), 0);
   const coloresCategorias = ['bg-blue-500', 'bg-indigo-500', 'bg-purple-500', 'bg-pink-500', 'bg-rose-500', 'bg-orange-500', 'bg-emerald-500', 'bg-sky-500'];
 
   return (
@@ -443,10 +447,7 @@ export default function Home() {
         </div>
       </div>
 
-      {/* ========================================== */}
-      {/* VISTAS                                     */}
-      {/* ========================================== */}
-
+      {/* 1. VISTA: CALENDARIO */}
       {pestañaActiva === 'calendario' && (
         <div className="max-w-6xl mx-auto animate-fade-in">
           <div className="flex flex-wrap gap-2 md:gap-3 mb-4 bg-white p-2.5 rounded-2xl border border-gray-100 w-max shadow-sm">
@@ -475,6 +476,7 @@ export default function Home() {
         </div>
       )}
 
+      {/* 2. VISTA: HÁBITOS */}
       {pestañaActiva === 'habitos' && (
         <div className="max-w-5xl mx-auto animate-fade-in">
           <form onSubmit={agregarHabito} className="bg-white p-6 md:p-8 rounded-3xl shadow-sm border border-gray-100 mb-8">
@@ -536,7 +538,6 @@ export default function Home() {
                       
                       return (
                         <li key={habito.id} className={`flex flex-col p-4 rounded-2xl transition-all border-2 ${completadoHoy ? 'bg-green-50/50 border-green-200' : 'bg-white border-gray-100 hover:border-blue-300 hover:shadow-md'}`}>
-                          
                           <div className="flex items-center gap-4 cursor-pointer active:scale-95" onClick={() => marcarHabito(habito.id)}>
                             <span className="text-3xl bg-gray-50 w-12 h-12 flex items-center justify-center rounded-xl shrink-0">{habito.emoji}</span>
                             <div className="flex flex-col flex-grow">
@@ -562,7 +563,6 @@ export default function Home() {
                               ))}
                             </div>
                           </div>
-
                         </li>
                       );
                     })}
@@ -574,27 +574,33 @@ export default function Home() {
         </div>
       )}
 
+      {/* 3. VISTA: FINANZAS */}
       {pestañaActiva === 'finanzas' && (
         <div className="max-w-4xl mx-auto animate-fade-in">
-          
           {gastos.length > 0 && (
             <div className="bg-white p-6 md:p-8 rounded-3xl shadow-sm border border-gray-100 mb-8">
               <h3 className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2">Distribución del Presupuesto Total</h3>
               <p className="text-3xl font-black text-slate-900 mb-6">${totalGastosMes.toLocaleString('es-CO')}</p>
               
               <div className="w-full h-4 rounded-full flex overflow-hidden mb-5 bg-gray-100 shadow-inner">
-                {Object.entries(categoriasGastos).map(([cat, monto], i) => (
-                  <div key={cat} title={`${cat}: $${monto.toLocaleString()}`} className={`h-full transition-all duration-1000 ${coloresCategorias[i % coloresCategorias.length]}`} style={{ width: `${totalGastosMes > 0 ? (monto / totalGastosMes) * 100 : 0}%` }}></div>
-                ))}
+                {Object.entries(categoriasGastos).map(([cat, montoCat]: any, i) => {
+                  const valorMonto = Number(montoCat) || 0;
+                  return (
+                    <div key={cat} title={`${cat}: $${valorMonto.toLocaleString()}`} className={`h-full transition-all duration-1000 ${coloresCategorias[i % coloresCategorias.length]}`} style={{ width: `${totalGastosMes > 0 ? (valorMonto / totalGastosMes) * 100 : 0}%` }}></div>
+                  );
+                })}
               </div>
               
               <div className="flex flex-wrap gap-3 md:gap-4">
-                {Object.entries(categoriasGastos).map(([cat, monto], i) => (
-                  <div key={cat} className="flex items-center gap-1.5 text-xs font-black text-slate-600 bg-gray-50 px-2 py-1 rounded-lg border border-gray-100">
-                    <span className={`w-2.5 h-2.5 rounded-full shadow-sm ${coloresCategorias[i % coloresCategorias.length]}`}></span>
-                    {cat} <span className="text-gray-400 font-bold ml-1">{((monto / totalGastosMes) * 100).toFixed(0)}%</span>
-                  </div>
-                ))}
+                {Object.entries(categoriasGastos).map(([cat, montoCat]: any, i) => {
+                  const valorMonto = Number(montoCat) || 0;
+                  return (
+                    <div key={cat} className="flex items-center gap-1.5 text-xs font-black text-slate-600 bg-gray-50 px-2 py-1 rounded-lg border border-gray-100">
+                      <span className={`w-2.5 h-2.5 rounded-full shadow-sm ${coloresCategorias[i % coloresCategorias.length]}`}></span>
+                      {cat} <span className="text-gray-400 font-bold ml-1">{totalGastosMes > 0 ? ((valorMonto / totalGastosMes) * 100).toFixed(0) : 0}%</span>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           )}
@@ -619,9 +625,9 @@ export default function Home() {
         </div>
       )}
 
+      {/* 4. VISTA: SUPERMERCADO */}
       {pestañaActiva === 'supermercado' && (
         <div className="max-w-6xl mx-auto animate-fade-in">
-          
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
             <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm flex flex-col justify-center">
               <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">Límite Presupuesto</span>
@@ -749,9 +755,7 @@ export default function Home() {
         </div>
       )}
 
-      {/* ========================================== */}
-      {/* NAVEGACIÓN INFERIOR MÓVIL                  */}
-      {/* ========================================== */}
+      {/* NAVEGACIÓN BOTTOM BAR */}
       {sesion && (
         <nav className="md:hidden fixed bottom-0 left-0 w-full bg-white/80 backdrop-blur-xl border-t border-gray-200 z-50 flex justify-around items-center p-2 pb-safe shadow-[0_-10px_40px_rgba(0,0,0,0.05)]">
           {navItems.map(item => (
