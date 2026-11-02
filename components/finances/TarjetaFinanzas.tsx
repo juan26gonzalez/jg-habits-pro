@@ -14,8 +14,13 @@ export default function TarjetaFinanzas({ gasto, sesion, strHoy, onGastoActualiz
   const [aportes, setAportes] = useState<CuotaAporte[]>([]);
   const [nombreIntegrante, setNombreIntegrante] = useState('');
   const [montoAporte, setMontoAporte] = useState('');
-  const [editandoId, setEditandoId] = useState<string | null>(null);
-  const [nuevoMonto, setNuevoMonto] = useState('');
+  const [agregandoAporte, setAgregandoAporte] = useState(false);
+
+  // Estado para editar nombre del integrante y monto del aporte
+  const [editandoAporteId, setEditandoAporteId] = useState<string | null>(null);
+  const [editNombreIntegrante, setEditNombreIntegrante] = useState('');
+  const [editMontoAporte, setEditMontoAporte] = useState('');
+  const [guardandoEdicionAporte, setGuardandoEdicionAporte] = useState(false);
 
   // Modal para editar el gasto principal
   const [modalEditarGasto, setModalEditarGasto] = useState(false);
@@ -67,40 +72,72 @@ export default function TarjetaFinanzas({ gasto, sesion, strHoy, onGastoActualiz
 
   async function agregarAporte(e: React.FormEvent) {
     e.preventDefault();
-    if (!nombreIntegrante || !montoAporte || !sesion?.user?.id || !gasto?.id) return;
+    if (!nombreIntegrante.trim() || !montoAporte || !sesion?.user?.id || !gasto?.id) return;
+    setAgregandoAporte(true);
+
     const { data, error } = await supabase
       .from('finanzas_cuotas_familia')
       .insert([{ 
         gasto_id: gasto.id, 
-        integrante: nombreIntegrante, 
+        integrante: nombreIntegrante.trim(), 
         monto_cuota: Number(montoAporte), 
         user_id: sesion.user.id, 
         pagado: true 
       }])
       .select();
 
+    setAgregandoAporte(false);
+
     if (error) {
-      alert(`Error: ${error.message}`);
+      alert(`Error al registrar aporte: ${error.message}`);
     } else if (data && data[0]) {
-      setAportes([...aportes, data[0] as CuotaAporte]);
+      setAportes(prev => [...prev, data[0] as CuotaAporte]);
       setNombreIntegrante('');
       setMontoAporte('');
-      onGastoActualizado();
+      // No llamamos onGastoActualizado() para que solo se actualice localmente esta tarjeta sin recargar la página
     }
   }
 
-  async function guardarEdicionAporte(aporteId: string) {
-    if (!nuevoMonto) return;
+  function iniciarEdicionAporte(ap: CuotaAporte) {
+    setEditandoAporteId(ap.id);
+    setEditNombreIntegrante(ap.integrante || '');
+    setEditMontoAporte(String(ap.monto_cuota || ''));
+  }
+
+  function cancelarEdicionAporte() {
+    setEditandoAporteId(null);
+    setEditNombreIntegrante('');
+    setEditMontoAporte('');
+  }
+
+  async function guardarEdicionAporte(e: React.FormEvent, aporteId: string) {
+    e.preventDefault();
+    if (!editNombreIntegrante.trim() || !editMontoAporte) return;
+    setGuardandoEdicionAporte(true);
+
+    const nuevoNombreLimpio = editNombreIntegrante.trim();
+    const nuevoMontoNum = Number(editMontoAporte);
+
     const { error } = await supabase
       .from('finanzas_cuotas_familia')
-      .update({ monto_cuota: Number(nuevoMonto) })
+      .update({ 
+        integrante: nuevoNombreLimpio,
+        monto_cuota: nuevoMontoNum 
+      })
       .eq('id', aporteId);
 
-    if (!error) {
-      setAportes(aportes.map(ap => ap.id === aporteId ? { ...ap, monto_cuota: Number(nuevoMonto) } : ap));
-      setEditandoId(null);
-      setNuevoMonto('');
-      onGastoActualizado();
+    setGuardandoEdicionAporte(false);
+
+    if (error) {
+      alert(`Error al actualizar aporte: ${error.message}`);
+    } else {
+      setAportes(prev => prev.map(ap => 
+        ap.id === aporteId 
+          ? { ...ap, integrante: nuevoNombreLimpio, monto_cuota: nuevoMontoNum } 
+          : ap
+      ));
+      cancelarEdicionAporte();
+      // No llamamos onGastoActualizado() para actualizar exclusivamente esta tarjeta sin recargar la página
     }
   }
 
@@ -111,8 +148,12 @@ export default function TarjetaFinanzas({ gasto, sesion, strHoy, onGastoActualiz
       .eq('id', aporteId);
 
     if (!error) {
-      setAportes(aportes.filter(ap => ap.id !== aporteId));
-      onGastoActualizado();
+      setAportes(prev => prev.filter(ap => ap.id !== aporteId));
+      if (editandoAporteId === aporteId) {
+        cancelarEdicionAporte();
+      }
+    } else {
+      alert(`Error al eliminar aporte: ${error.message}`);
     }
   }
 
@@ -233,44 +274,87 @@ export default function TarjetaFinanzas({ gasto, sesion, strHoy, onGastoActualiz
         {aportes.length > 0 ? (
           <div className="p-3.5 bg-[#FAF5F0]/60 rounded-2xl border border-[#EADBCE]/60">
             <h4 className="text-[10px] font-bold text-[#8D6B57] uppercase tracking-wider mb-2.5">Aportes ({aportes.length})</h4>
-            <ul className="space-y-2 max-h-36 overflow-y-auto pr-1">
+            <ul className="space-y-2.5 max-h-48 overflow-y-auto pr-1">
               {aportes.map((ap) => (
-                <li key={ap.id} className="flex justify-between text-xs items-center p-1.5 rounded-lg hover:bg-white transition-colors">
-                  <span className="font-semibold text-[#3E271D] flex items-center gap-2">
-                    <div className="w-5 h-5 rounded-full bg-[#EADBCE] text-[#2D1C14] flex items-center justify-center text-[10px] font-black">
-                      {ap.integrante ? ap.integrante.charAt(0).toUpperCase() : '?'}
-                    </div>
-                    {ap.integrante}
-                  </span>
-                  {editandoId === ap.id ? (
-                    <div className="flex gap-1.5 items-center">
-                      <input 
-                        type="number" 
-                        value={nuevoMonto} 
-                        onChange={(e) => setNuevoMonto(e.target.value)} 
-                        className="w-20 p-1 text-xs border border-[#EADBCE] rounded-lg bg-white font-bold outline-none text-[#2D1C14]" 
-                        autoFocus 
-                      />
-                      <button onClick={() => guardarEdicionAporte(ap.id)} className="text-[#2D1C14] hover:text-black font-bold p-1">✓</button>
-                      <button onClick={() => setEditandoId(null)} className="text-[#8D6B57] hover:text-[#2D1C14] p-1">✕</button>
-                    </div>
+                <li key={ap.id}>
+                  {editandoAporteId === ap.id ? (
+                    <form 
+                      onSubmit={(e) => guardarEdicionAporte(e, ap.id)}
+                      className="p-3 bg-white rounded-xl border border-[#2D1C14] shadow-sm space-y-2.5"
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-[#8D6B57]">Editar Integrante</span>
+                        <span className="text-[10px] font-semibold text-[#8D6B57]">ID: {ap.id.slice(0, 4)}</span>
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        <div>
+                          <label className="text-[10px] font-bold text-[#8D6B57] block mb-1">Nombre</label>
+                          <input 
+                            type="text" 
+                            value={editNombreIntegrante} 
+                            onChange={(e) => setEditNombreIntegrante(e.target.value)} 
+                            placeholder="Nombre de la persona"
+                            className="w-full p-2 text-xs border border-[#EADBCE] rounded-lg bg-[#FAF5F0]/60 font-semibold text-[#2D1C14] outline-none focus:bg-white focus:border-[#2D1C14]" 
+                            autoFocus 
+                            required 
+                          />
+                        </div>
+                        <div>
+                          <label className="text-[10px] font-bold text-[#8D6B57] block mb-1">Monto ($)</label>
+                          <input 
+                            type="number" 
+                            value={editMontoAporte} 
+                            onChange={(e) => setEditMontoAporte(e.target.value)} 
+                            placeholder="Monto"
+                            className="w-full p-2 text-xs border border-[#EADBCE] rounded-lg bg-[#FAF5F0]/60 font-bold text-[#2D1C14] outline-none focus:bg-white focus:border-[#2D1C14]" 
+                            required 
+                          />
+                        </div>
+                      </div>
+                      <div className="flex justify-end gap-2 pt-1 border-t border-[#EADBCE]/40">
+                        <button 
+                          type="button" 
+                          onClick={cancelarEdicionAporte} 
+                          className="px-3 py-1.5 text-xs font-semibold rounded-lg text-[#8D6B57] hover:bg-[#FAF5F0] active:scale-95 transition-all"
+                        >
+                          Cancelar
+                        </button>
+                        <button 
+                          type="submit" 
+                          disabled={guardandoEdicionAporte}
+                          className="px-3.5 py-1.5 text-xs font-bold rounded-lg bg-[#2D1C14] text-white hover:bg-[#3E271D] active:scale-95 transition-all shadow-2xs disabled:opacity-50"
+                        >
+                          {guardandoEdicionAporte ? 'Guardando...' : 'Guardar'}
+                        </button>
+                      </div>
+                    </form>
                   ) : (
-                    <div className="flex gap-1.5 items-center">
-                      <span className="text-[#2D1C14] font-bold">${Number(ap.monto_cuota).toLocaleString('es-CO')}</span>
-                      <button 
-                        onClick={() => { setEditandoId(ap.id); setNuevoMonto(String(ap.monto_cuota || '')); }} 
-                        className="text-[#B39380] hover:text-[#2D1C14] p-0.5 rounded transition-colors"
-                        title="Modificar"
-                      >
-                        ✏️
-                      </button>
-                      <button 
-                        onClick={() => eliminarAporte(ap.id)} 
-                        className="text-[#B39380] hover:text-rose-600 p-0.5 rounded transition-colors"
-                        title="Eliminar"
-                      >
-                        🗑️
-                      </button>
+                    <div className="flex justify-between text-xs items-center p-2 rounded-xl hover:bg-white transition-colors bg-white/40 border border-[#EADBCE]/40">
+                      <div className="font-semibold text-[#3E271D] flex items-center gap-2 min-w-0 pr-2">
+                        <div className="w-6 h-6 rounded-full bg-[#EADBCE] text-[#2D1C14] flex items-center justify-center text-[10px] font-black shrink-0">
+                          {ap.integrante ? ap.integrante.charAt(0).toUpperCase() : '?'}
+                        </div>
+                        <span className="truncate font-bold text-[#2D1C14]" title={ap.integrante}>{ap.integrante}</span>
+                      </div>
+                      <div className="flex gap-1.5 items-center shrink-0">
+                        <span className="text-[#2D1C14] font-extrabold whitespace-nowrap mr-1">${Number(ap.monto_cuota).toLocaleString('es-CO')}</span>
+                        <button 
+                          type="button"
+                          onClick={() => iniciarEdicionAporte(ap)} 
+                          className="w-7 h-7 rounded-lg text-[#8D6B57] hover:text-[#2D1C14] hover:bg-white flex items-center justify-center transition-colors text-xs active:scale-90 border border-transparent hover:border-[#EADBCE]"
+                          title="Editar persona y monto"
+                        >
+                          ✏️
+                        </button>
+                        <button 
+                          type="button"
+                          onClick={() => eliminarAporte(ap.id)} 
+                          className="w-7 h-7 rounded-lg text-[#8D6B57] hover:text-rose-600 hover:bg-rose-50 flex items-center justify-center transition-colors text-xs active:scale-90 border border-transparent hover:border-rose-200"
+                          title="Eliminar aporte"
+                        >
+                          🗑️
+                        </button>
+                      </div>
                     </div>
                   )}
                 </li>
@@ -305,10 +389,11 @@ export default function TarjetaFinanzas({ gasto, sesion, strHoy, onGastoActualiz
           />
           <button 
             type="submit" 
-            className="bg-[#2D1C14] text-white font-bold px-3.5 py-2.5 rounded-xl hover:bg-[#3E271D] active:scale-95 transition-all text-xs flex justify-center items-center shadow-xs shrink-0"
+            disabled={agregandoAporte}
+            className="bg-[#2D1C14] text-white font-bold px-3.5 py-2.5 rounded-xl hover:bg-[#3E271D] active:scale-95 transition-all text-xs flex justify-center items-center shadow-xs shrink-0 disabled:opacity-50"
             title="Agregar aporte"
           >
-            +
+            {agregandoAporte ? '...' : '+'}
           </button>
         </form>
       )}

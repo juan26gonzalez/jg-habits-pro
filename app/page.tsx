@@ -45,8 +45,8 @@ export default function Home() {
   const [mercadoLista, setMercadoLista] = useState<MercadoItem[]>([]);
   const [presupuestoMercado, setPresupuestoMercado] = useState(0);
 
-  const cargarDatosGenerales = useCallback(async () => {
-    setCargandoGlobal(true);
+  const cargarDatosGenerales = useCallback(async (mostrarEsqueleto = false) => {
+    if (mostrarEsqueleto) setCargandoGlobal(true);
     const fechaHoy = new Date();
     const hoyFechaStr = fechaHoy.toISOString().split('T')[0];
     
