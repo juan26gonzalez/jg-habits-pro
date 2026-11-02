@@ -109,7 +109,7 @@ export default function Home() {
   const [sesion, setSesion] = useState<any>(null);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [cargandoGlobal, setCargandoGlobal] = useState(true); // Nuevo estado para Skeleton
+  const [cargandoGlobal, setCargandoGlobal] = useState(true);
   const [errorLogin, setErrorLogin] = useState('');
   
   // NAVEGACIÓN
@@ -146,6 +146,11 @@ export default function Home() {
   const [catPrecio, setCatPrecio] = useState('');
   const [catUnidad, setCatUnidad] = useState('und');
   const [catCat, setCatCat] = useState('Abarrotes');
+
+  // NUEVO: ESTADOS PARA FILTROS DEL DASHBOARD
+  const [filtroHabitos, setFiltroHabitos] = useState(true);
+  const [filtroFinanzas, setFiltroFinanzas] = useState(true);
+  const [filtroMercado, setFiltroMercado] = useState(true);
 
   async function cargarDatosGenerales() {
     setCargandoGlobal(true);
@@ -298,12 +303,13 @@ export default function Home() {
     );
   }
 
-  // GENERACIÓN DEL CALENDARIO MAESTRO
+  // GENERACIÓN DEL CALENDARIO MAESTRO CON MEJORAS
   const diasEnMes = new Date(anioActual, mesActual + 1, 0).getDate();
   const primerDiaSemana = new Date(anioActual, mesActual, 1).getDay();
   const celdasCalendario = [];
   const nombresMeses = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
   const diasSemana = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
+  const mapFrecuenciaDias = ['Do', 'Lu', 'Ma', 'Mi', 'Ju', 'Vi', 'Sá'];
 
   for (let i = 0; i < primerDiaSemana; i++) celdasCalendario.push(<div key={`empty-${i}`} className="p-2 border border-transparent"></div>);
 
@@ -317,13 +323,30 @@ export default function Home() {
     const habitosDelDia = registrosHistoricos.filter(r => r.fecha === fechaIteracion);
     const esHoy = fechaIteracion === strHoy;
 
+    // NUEVO: Calcular progreso de hábitos del día
+    const indiceDiaSemana = new Date(anioActual, mesActual, d).getDay();
+    const strDiaCorto = mapFrecuenciaDias[indiceDiaSemana];
+    const habitosProgramadosHoy = habitosCatalogo.filter(h => h.frecuencia && h.frecuencia.includes(strDiaCorto));
+    const porcentajeProgreso = habitosProgramadosHoy.length > 0 ? Math.min(100, (habitosDelDia.length / habitosProgramadosHoy.length) * 100) : 0;
+
     celdasCalendario.push(
-      <div key={d} className={`p-2 md:p-3 min-h-[100px] border border-gray-200 rounded-2xl shadow-sm transition-all ${esHoy ? 'bg-blue-50/50 border-blue-400 ring-2 ring-blue-200' : 'bg-white hover:border-blue-300 hover:shadow-md'}`}>
-        <span className={`font-black text-sm ${esHoy ? 'text-blue-700 bg-blue-200 px-2.5 py-1 rounded-full' : 'text-slate-400'}`}>{d}</span>
-        <div className="flex flex-col gap-1.5 mt-3">
-          {gastosDelDia.map((g, i) => <span key={`g-${i}`} className="bg-red-100 text-red-800 text-[10px] font-bold px-2 py-1 rounded-lg flex items-center gap-1 truncate shadow-sm">💳 {g.concepto}</span>)}
-          {comprasDelDia.length > 0 && <span className="bg-green-100 text-green-800 text-[10px] font-bold px-2 py-1 rounded-lg flex items-center gap-1 truncate shadow-sm">🛒 Súper ({comprasDelDia.length})</span>}
-          {habitosDelDia.map((h, i) => {
+      <div key={d} className={`p-2 md:p-3 min-h-[100px] border border-gray-200 rounded-2xl shadow-sm transition-all flex flex-col ${esHoy ? 'bg-blue-50/50 border-blue-400 ring-2 ring-blue-200' : 'bg-white hover:border-blue-300 hover:shadow-md'}`}>
+        
+        {/* Cabecera del día con barra de progreso */}
+        <div className="flex justify-between items-center mb-2">
+          <span className={`font-black text-sm ${esHoy ? 'text-blue-700 bg-blue-200 px-2.5 py-1 rounded-full' : 'text-slate-400'}`}>{d}</span>
+          {filtroHabitos && habitosProgramadosHoy.length > 0 && (
+            <div className="w-10 md:w-16 h-1.5 bg-gray-100 rounded-full overflow-hidden" title={`${habitosDelDia.length} de ${habitosProgramadosHoy.length} hábitos`}>
+              <div className={`h-full transition-all duration-500 ${porcentajeProgreso >= 100 ? 'bg-green-500' : 'bg-blue-500'}`} style={{ width: `${porcentajeProgreso}%` }}></div>
+            </div>
+          )}
+        </div>
+
+        {/* Eventos filtrados */}
+        <div className="flex flex-col gap-1.5 flex-grow">
+          {filtroFinanzas && gastosDelDia.map((g, i) => <span key={`g-${i}`} className="bg-red-100 text-red-800 text-[10px] font-bold px-2 py-1 rounded-lg flex items-center gap-1 truncate shadow-sm">💳 {g.concepto}</span>)}
+          {filtroMercado && comprasDelDia.length > 0 && <span className="bg-green-100 text-green-800 text-[10px] font-bold px-2 py-1 rounded-lg flex items-center gap-1 truncate shadow-sm">🛒 Súper ({comprasDelDia.length})</span>}
+          {filtroHabitos && habitosDelDia.map((h, i) => {
             const habitoInfo = habitosCatalogo.find(hc => hc.id === h.habito_id);
             if (!habitoInfo) return null;
             return <span key={`h-${i}`} className="bg-indigo-100 text-indigo-800 text-[10px] font-bold px-2 py-1 rounded-lg flex items-center gap-1 truncate shadow-sm">{habitoInfo.emoji} {habitoInfo.nombre}</span>;
@@ -333,7 +356,6 @@ export default function Home() {
     );
   }
 
-  // BOTONES DE NAVEGACIÓN (SE REUTILIZAN EN DESKTOP Y MOBILE)
   const navItems = [
     { id: 'calendario', icon: '📅', label: 'Dashboard' },
     { id: 'habitos', icon: '🗓️', label: 'Habits' },
@@ -354,7 +376,7 @@ export default function Home() {
           <button onClick={() => supabase.auth.signOut()} className="text-sm font-bold text-gray-400 hover:text-red-500 transition-colors bg-gray-50 px-4 py-2 rounded-xl active:scale-95">Log Out</button>
         </div>
         
-        {/* NAVEGACIÓN DESKTOP (Se oculta en móvil) */}
+        {/* NAVEGACIÓN DESKTOP */}
         <div className="hidden md:flex gap-2 mt-6 overflow-x-auto scrollbar-hide bg-white p-2 rounded-2xl shadow-sm border border-gray-100 w-max">
           {navItems.map(item => (
             <button 
@@ -373,6 +395,15 @@ export default function Home() {
       {/* ========================================== */}
       {pestañaActiva === 'calendario' && (
         <div className="max-w-6xl mx-auto animate-fade-in">
+          
+          {/* NUEVO: PANEL DE FILTROS SUPERIORES */}
+          <div className="flex flex-wrap gap-2 md:gap-3 mb-4 bg-white p-2.5 rounded-2xl border border-gray-100 w-max shadow-sm">
+            <span className="text-xs font-black text-gray-400 uppercase tracking-widest flex items-center px-2 mr-1">Filtros:</span>
+            <button onClick={() => setFiltroHabitos(!filtroHabitos)} className={`px-4 py-1.5 text-xs font-bold rounded-xl transition-all active:scale-95 ${filtroHabitos ? 'bg-indigo-100 text-indigo-700' : 'bg-gray-50 text-gray-400 opacity-60 border border-gray-200'}`}>🗓️ Hábitos</button>
+            <button onClick={() => setFiltroFinanzas(!filtroFinanzas)} className={`px-4 py-1.5 text-xs font-bold rounded-xl transition-all active:scale-95 ${filtroFinanzas ? 'bg-red-100 text-red-700' : 'bg-gray-50 text-gray-400 opacity-60 border border-gray-200'}`}>💰 Gastos</button>
+            <button onClick={() => setFiltroMercado(!filtroMercado)} className={`px-4 py-1.5 text-xs font-bold rounded-xl transition-all active:scale-95 ${filtroMercado ? 'bg-green-100 text-green-700' : 'bg-gray-50 text-gray-400 opacity-60 border border-gray-200'}`}>🛒 Súper</button>
+          </div>
+
           <div className="bg-white p-6 md:p-8 rounded-3xl shadow-sm border border-gray-100">
             <div className="flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
               <h2 className="text-3xl font-black text-slate-800 tracking-tight">
@@ -506,7 +537,6 @@ export default function Home() {
       {pestañaActiva === 'supermercado' && (
         <div className="max-w-6xl mx-auto animate-fade-in">
           
-          {/* DASHBOARD FINANCIERO CON GRADIENTES */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
             <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm flex flex-col justify-center">
               <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">Límite Presupuesto</span>
@@ -530,8 +560,6 @@ export default function Home() {
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            
-            {/* COLUMNA IZQ: CATÁLOGO */}
             <div className="lg:col-span-1 flex flex-col gap-6">
               <div className="bg-white p-6 md:p-8 rounded-3xl shadow-sm border border-gray-100">
                 <h3 className="text-lg font-black text-slate-800 mb-5">📚 Agregar al Catálogo</h3>
@@ -568,7 +596,6 @@ export default function Home() {
               </div>
             </div>
 
-            {/* COLUMNA DER: LISTA Y CARRITO */}
             <div className="lg:col-span-2">
               <div className="bg-white p-6 md:p-8 rounded-3xl shadow-sm border border-gray-100 min-h-[600px]">
                 <h3 className="text-2xl font-black text-slate-800 mb-8 flex items-center gap-3">🛒 Compra Actual</h3>
