@@ -8,9 +8,20 @@ interface TarjetaFinanzasProps {
   sesion: UserSession;
   strHoy: string;
   onGastoActualizado: () => void;
+  onAporteAgregado?: (nuevoAporte: CuotaAporte) => void;
+  onAporteActualizado?: (aporteActualizado: CuotaAporte) => void;
+  onAporteEliminado?: (aporteId: string) => void;
 }
 
-export default function TarjetaFinanzas({ gasto, sesion, strHoy, onGastoActualizado }: TarjetaFinanzasProps) {
+export default function TarjetaFinanzas({ 
+  gasto, 
+  sesion, 
+  strHoy, 
+  onGastoActualizado,
+  onAporteAgregado,
+  onAporteActualizado,
+  onAporteEliminado
+}: TarjetaFinanzasProps) {
   const [aportes, setAportes] = useState<CuotaAporte[]>([]);
   const [nombreIntegrante, setNombreIntegrante] = useState('');
   const [montoAporte, setMontoAporte] = useState('');
@@ -91,10 +102,11 @@ export default function TarjetaFinanzas({ gasto, sesion, strHoy, onGastoActualiz
     if (error) {
       alert(`Error al registrar aporte: ${error.message}`);
     } else if (data && data[0]) {
-      setAportes(prev => [...prev, data[0] as CuotaAporte]);
+      const nuevoReg = data[0] as CuotaAporte;
+      setAportes(prev => [...prev, nuevoReg]);
       setNombreIntegrante('');
       setMontoAporte('');
-      // No llamamos onGastoActualizado() para que solo se actualice localmente esta tarjeta sin recargar la página
+      onAporteAgregado?.(nuevoReg);
     }
   }
 
@@ -131,13 +143,14 @@ export default function TarjetaFinanzas({ gasto, sesion, strHoy, onGastoActualiz
     if (error) {
       alert(`Error al actualizar aporte: ${error.message}`);
     } else {
+      const aporteMod = { id: aporteId, gasto_id: gasto.id, integrante: nuevoNombreLimpio, monto_cuota: nuevoMontoNum };
       setAportes(prev => prev.map(ap => 
         ap.id === aporteId 
           ? { ...ap, integrante: nuevoNombreLimpio, monto_cuota: nuevoMontoNum } 
           : ap
       ));
       cancelarEdicionAporte();
-      // No llamamos onGastoActualizado() para actualizar exclusivamente esta tarjeta sin recargar la página
+      onAporteActualizado?.(aporteMod as CuotaAporte);
     }
   }
 
@@ -152,6 +165,7 @@ export default function TarjetaFinanzas({ gasto, sesion, strHoy, onGastoActualiz
       if (editandoAporteId === aporteId) {
         cancelarEdicionAporte();
       }
+      onAporteEliminado?.(aporteId);
     } else {
       alert(`Error al eliminar aporte: ${error.message}`);
     }

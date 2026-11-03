@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import TarjetaFinanzas from './TarjetaFinanzas';
-import type { Gasto, UserSession } from '@/types';
+import type { Gasto, CuotaAporte, UserSession } from '@/types';
 
 interface FinancesTabProps {
   gastos: Gasto[];
+  cuotasFamilia: CuotaAporte[];
+  setCuotasFamilia: React.Dispatch<React.SetStateAction<CuotaAporte[]>>;
   sesion: UserSession;
   strHoy: string;
   onGastoAgregado: () => void;
@@ -22,7 +24,14 @@ const coloresCategorias = [
   'bg-[#C89F89]'
 ];
 
-export default function FinancesTab({ gastos, sesion, strHoy, onGastoAgregado }: FinancesTabProps) {
+export default function FinancesTab({ 
+  gastos, 
+  cuotasFamilia, 
+  setCuotasFamilia, 
+  sesion, 
+  strHoy, 
+  onGastoAgregado 
+}: FinancesTabProps) {
   const [mostrarFormulario, setMostrarFormulario] = useState(false);
   const [busqueda, setBusqueda] = useState('');
   const [filtroEstado, setFiltroEstado] = useState<'todos' | 'pendientes' | 'urgentes' | 'pagados'>('todos');
@@ -40,6 +49,36 @@ export default function FinancesTab({ gastos, sesion, strHoy, onGastoAgregado }:
   }, {});
 
   const totalGastosMes = gastos.reduce((sum: number, g: Gasto) => sum + (Number(g?.monto_total) || 0), 0);
+
+  // Sumatoria total de aportes por cada persona agregada en las finanzas
+  const totalesPorPersona = cuotasFamilia.reduce((acc: Record<string, { total: number; cuotasCount: number; gastosIds: Set<string> }>, cuota) => {
+    const rawNombre = cuota.integrante?.trim();
+    if (!rawNombre) return acc;
+    const nombre = rawNombre.charAt(0).toUpperCase() + rawNombre.slice(1);
+    
+    if (!acc[nombre]) {
+      acc[nombre] = { total: 0, cuotasCount: 0, gastosIds: new Set<string>() };
+    }
+    acc[nombre].total += Number(cuota.monto_cuota) || 0;
+    acc[nombre].cuotasCount += 1;
+    if (cuota.gasto_id) acc[nombre].gastosIds.add(cuota.gasto_id);
+    return acc;
+  }, {});
+
+  const totalAportadoGeneral = Object.values(totalesPorPersona).reduce((sum, p) => sum + p.total, 0);
+  const personasOrdenadas = Object.entries(totalesPorPersona).sort((a, b) => b[1].total - a[1].total);
+
+  function handleAporteAgregado(nuevoAporte: CuotaAporte) {
+    setCuotasFamilia(prev => [...prev, nuevoAporte]);
+  }
+
+  function handleAporteActualizado(aporteActualizado: CuotaAporte) {
+    setCuotasFamilia(prev => prev.map(c => c.id === aporteActualizado.id ? aporteActualizado : c));
+  }
+
+  function handleAporteEliminado(aporteId: string) {
+    setCuotasFamilia(prev => prev.filter(c => c.id !== aporteId));
+  }
 
   async function agregarGasto(e: React.FormEvent) {
     e.preventDefault();
@@ -125,6 +164,72 @@ export default function FinancesTab({ gastos, sesion, strHoy, onGastoAgregado }:
                 <div key={cat} className="flex items-center gap-1.5 text-xs font-bold text-[#4A3225] bg-[#FAF5F0] px-2.5 py-1 rounded-lg border border-[#EADBCE]/60">
                   <span className={`w-2 h-2 rounded-full ${coloresCategorias[i % coloresCategorias.length]}`}></span>
                   {cat} <span className="text-[#8D6B57] font-medium ml-0.5">{totalGastosMes > 0 ? ((valorMonto / totalGastosMes) * 100).toFixed(0) : 0}%</span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Sumatoria Total por Integrante */}
+      {personasOrdenadas.length > 0 && (
+        <div className="bg-white p-6 md:p-8 rounded-3xl shadow-[0_2px_16px_rgba(45,28,20,0.03)] border border-[#EADBCE]/80 space-y-5 animate-fade-in">
+          <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-2">
+            <div>
+              <span className="text-[10px] font-bold uppercase tracking-wider text-[#8D6B57] block mb-0.5">
+                Total por Integrante
+              </span>
+              <h3 className="text-xl md:text-2xl font-extrabold text-[#2D1C14] tracking-tight">
+                Sumatoria de Aportes
+              </h3>
+            </div>
+            <div className="bg-[#FAF5F0] px-3.5 py-2 rounded-2xl border border-[#EADBCE]/60 flex items-center gap-2 self-start sm:self-auto">
+              <span className="text-xs font-bold text-[#8D6B57]">Total Recaudado:</span>
+              <span className="text-sm font-black text-[#2D1C14]">${totalAportadoGeneral.toLocaleString('es-CO')}</span>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
+            {personasOrdenadas.map(([nombre, data]) => {
+              const pct = totalAportadoGeneral > 0 ? (data.total / totalAportadoGeneral) * 100 : 0;
+              return (
+                <div 
+                  key={nombre} 
+                  className="p-4 rounded-2xl bg-[#FAF5F0]/60 border border-[#EADBCE]/80 hover:bg-white hover:border-[#D9C4B3] transition-all flex flex-col justify-between space-y-3"
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div className="w-8 h-8 rounded-full bg-[#2D1C14] text-white flex items-center justify-center text-xs font-black shrink-0 shadow-2xs">
+                        {nombre.charAt(0).toUpperCase()}
+                      </div>
+                      <div className="min-w-0">
+                        <h4 className="text-sm font-extrabold text-[#2D1C14] truncate" title={nombre}>
+                          {nombre}
+                        </h4>
+                        <span className="text-[10px] font-bold text-[#8D6B57] block">
+                          {data.cuotasCount} {data.cuotasCount === 1 ? 'aporte' : 'aportes'} en {data.gastosIds.size} {data.gastosIds.size === 1 ? 'gasto' : 'gastos'}
+                        </span>
+                      </div>
+                    </div>
+                    <span className="text-xs font-black text-[#2D1C14] bg-white px-2 py-1 rounded-lg border border-[#EADBCE]/60 shrink-0">
+                      {pct.toFixed(0)}%
+                    </span>
+                  </div>
+
+                  <div>
+                    <div className="flex justify-between items-baseline">
+                      <span className="text-[10px] font-bold text-[#8D6B57] uppercase tracking-wider">Total Aportado</span>
+                      <span className="text-lg font-black text-[#2D1C14] tracking-tight">
+                        ${data.total.toLocaleString('es-CO')}
+                      </span>
+                    </div>
+                    <div className="w-full bg-[#EADBCE]/50 rounded-full h-1.5 mt-1.5 overflow-hidden">
+                      <div 
+                        className="h-1.5 rounded-full bg-[#2D1C14] transition-all duration-500" 
+                        style={{ width: `${pct}%` }}
+                      ></div>
+                    </div>
+                  </div>
                 </div>
               );
             })}
@@ -243,6 +348,9 @@ export default function FinancesTab({ gastos, sesion, strHoy, onGastoAgregado }:
               sesion={sesion} 
               strHoy={strHoy} 
               onGastoActualizado={onGastoAgregado}
+              onAporteAgregado={handleAporteAgregado}
+              onAporteActualizado={handleAporteActualizado}
+              onAporteEliminado={handleAporteEliminado}
             />
           ))}
         </div>

@@ -34,7 +34,8 @@ export default function HabitsTab({
   const [mostrarFormulario, setMostrarFormulario] = useState(false);
   const [nuevoHabitoNombre, setNuevoHabitoNombre] = useState('');
   const [nuevoHabitoEmoji, setNuevoHabitoEmoji] = useState('🏃‍♂️');
-  const [nuevoHabitoHora, setNuevoHabitoHora] = useState(''); 
+  const [nuevoHabitoHoraInicio, setNuevoHabitoHoraInicio] = useState(''); 
+  const [nuevoHabitoHoraFin, setNuevoHabitoHoraFin] = useState(''); 
   const [nuevoHabitoBloque, setNuevoHabitoBloque] = useState<BloqueHabito>('Mañana');
   const [nuevoHabitoDias, setNuevoHabitoDias] = useState<string[]>(diasSemanaOpciones);
   const [guardando, setGuardando] = useState(false);
@@ -46,7 +47,8 @@ export default function HabitsTab({
   const [habitoEditando, setHabitoEditando] = useState<Habito | null>(null);
   const [editNombre, setEditNombre] = useState('');
   const [editEmoji, setEditEmoji] = useState('');
-  const [editHora, setEditHora] = useState('');
+  const [editHoraInicio, setEditHoraInicio] = useState('');
+  const [editHoraFin, setEditHoraFin] = useState('');
   const [editBloque, setEditBloque] = useState<BloqueHabito>('Mañana');
   const [editDias, setEditDias] = useState<string[]>([]);
   const [guardandoEdicion, setGuardandoEdicion] = useState(false);
@@ -65,17 +67,21 @@ export default function HabitsTab({
 
   async function agregarHabito(e: React.FormEvent) {
     e.preventDefault();
-    if (!nuevoHabitoNombre || !nuevoHabitoEmoji || !nuevoHabitoHora || !sesion?.user?.id) return;
+    if (!nuevoHabitoNombre || !nuevoHabitoEmoji || !nuevoHabitoHoraInicio || !sesion?.user?.id) return;
     if (nuevoHabitoDias.length === 0) {
       alert("Debes seleccionar al menos un día para este hábito.");
       return;
     }
     
     setGuardando(true);
+    const horaCompleta = nuevoHabitoHoraFin.trim() 
+      ? `${nuevoHabitoHoraInicio.trim()} - ${nuevoHabitoHoraFin.trim()}` 
+      : nuevoHabitoHoraInicio.trim();
+
     const { error } = await supabase.from('habitos_catalogo').insert([{ 
       nombre: nuevoHabitoNombre, 
       emoji: nuevoHabitoEmoji, 
-      hora: nuevoHabitoHora, 
+      hora: horaCompleta, 
       bloque: nuevoHabitoBloque, 
       frecuencia: nuevoHabitoDias.join(', '), 
       user_id: sesion.user.id 
@@ -86,7 +92,8 @@ export default function HabitsTab({
       alert(`Error al guardar target: ${error.message}`);
     } else {
       setNuevoHabitoNombre('');
-      setNuevoHabitoHora('');
+      setNuevoHabitoHoraInicio('');
+      setNuevoHabitoHoraFin('');
       setNuevoHabitoDias(diasSemanaOpciones);
       setMostrarFormulario(false);
       onHabitoAgregado();
@@ -97,7 +104,16 @@ export default function HabitsTab({
     setHabitoEditando(habito);
     setEditNombre(habito.nombre);
     setEditEmoji(habito.emoji);
-    setEditHora(habito.hora || '');
+    
+    if (habito.hora && habito.hora.includes(' - ')) {
+      const [hIni, hFin] = habito.hora.split(' - ');
+      setEditHoraInicio(hIni.trim());
+      setEditHoraFin(hFin.trim());
+    } else {
+      setEditHoraInicio(habito.hora || '');
+      setEditHoraFin('');
+    }
+
     setEditBloque((habito.bloque as BloqueHabito) || 'Mañana');
     const dias = habito.frecuencia ? habito.frecuencia.split(',').map(d => d.trim()) : diasSemanaOpciones;
     setEditDias(dias);
@@ -105,15 +121,19 @@ export default function HabitsTab({
 
   async function guardarEdicionHabito(e: React.FormEvent) {
     e.preventDefault();
-    if (!habitoEditando || !editNombre || !editEmoji || !editHora || editDias.length === 0) return;
+    if (!habitoEditando || !editNombre || !editEmoji || !editHoraInicio || editDias.length === 0) return;
     setGuardandoEdicion(true);
+
+    const horaCompleta = editHoraFin.trim() 
+      ? `${editHoraInicio.trim()} - ${editHoraFin.trim()}` 
+      : editHoraInicio.trim();
 
     const { error } = await supabase
       .from('habitos_catalogo')
       .update({
         nombre: editNombre,
         emoji: editEmoji,
-        hora: editHora,
+        hora: horaCompleta,
         bloque: editBloque,
         frecuencia: editDias.join(', ')
       })
@@ -144,20 +164,29 @@ export default function HabitsTab({
     }
   }
 
-  function calcularEstadisticasHabito(habitoId: string) {
+  function calcularEstadisticasHabito(habito: Habito) {
+    // Días asignados en la semana para este hábito (ej. "Lu, Mi, Vi" = 3)
+    const diasAsignados = habito.frecuencia 
+      ? habito.frecuencia.split(',').map(d => d.trim()).filter(Boolean)
+      : diasSemanaOpciones;
+    
+    const cantidadDiasAsignados = Math.max(1, diasAsignados.length);
+
     // Cálculo de últimos 7 días con la fecha oficial de Colombia
     const ultimos7Dias = Array.from({ length: 7 }, (_, i) => sumarDiasFechaStr(strHoy, -i));
 
     const historial7Dias = ultimos7Dias.reverse().map(fechaStr => 
-      registrosHistoricos.some(r => r.habito_id === habitoId && r.fecha === fechaStr)
+      registrosHistoricos.some(r => r.habito_id === habito.id && r.fecha === fechaStr)
     );
 
     const diasCompletados = historial7Dias.filter(Boolean).length;
-    const porcentajeSemana = Math.round((diasCompletados / 7) * 100);
+    
+    // Porcentaje en relación estricta a la cantidad de días asignados al hábito
+    const porcentajeSemana = Math.min(100, Math.round((diasCompletados / cantidadDiasAsignados) * 100));
 
     let rachaActual = 0;
     const fechasConRegistro = registrosHistoricos
-      .filter(r => r.habito_id === habitoId)
+      .filter(r => r.habito_id === habito.id)
       .map(r => r.fecha)
       .sort()
       .reverse();
@@ -175,7 +204,13 @@ export default function HabitsTab({
       }
     }
 
-    return { rachaActual, historial7Dias, porcentajeSemana };
+    return { 
+      rachaActual, 
+      historial7Dias, 
+      porcentajeSemana,
+      diasCompletados,
+      cantidadDiasAsignados 
+    };
   }
 
   const bloquesVisibles = filtroBloque === 'Todos' 
@@ -242,16 +277,29 @@ export default function HabitsTab({
               placeholder="Nombre del target..." 
               value={nuevoHabitoNombre} 
               onChange={(e) => setNuevoHabitoNombre(e.target.value)} 
-              className="p-3 border border-[#EADBCE] rounded-xl text-[#2D1C14] font-bold md:col-span-1 bg-[#FAF5F0]/50 outline-none focus:bg-white focus:border-[#2D1C14] text-sm" 
-              required 
-            />
-            <input 
-              type="time" 
-              value={nuevoHabitoHora} 
-              onChange={(e) => setNuevoHabitoHora(e.target.value)} 
               className="p-3 border border-[#EADBCE] rounded-xl text-[#2D1C14] font-bold bg-[#FAF5F0]/50 outline-none focus:bg-white focus:border-[#2D1C14] text-sm" 
               required 
             />
+            <div className="flex gap-1.5 items-center">
+              <input 
+                type="time" 
+                title="Hora de inicio"
+                placeholder="Inicio"
+                value={nuevoHabitoHoraInicio} 
+                onChange={(e) => setNuevoHabitoHoraInicio(e.target.value)} 
+                className="w-1/2 p-3 border border-[#EADBCE] rounded-xl text-[#2D1C14] font-bold bg-[#FAF5F0]/50 outline-none focus:bg-white focus:border-[#2D1C14] text-sm" 
+                required 
+              />
+              <span className="text-[#8D6B57] font-bold text-xs">-</span>
+              <input 
+                type="time" 
+                title="Hora de fin (opcional)"
+                placeholder="Fin"
+                value={nuevoHabitoHoraFin} 
+                onChange={(e) => setNuevoHabitoHoraFin(e.target.value)} 
+                className="w-1/2 p-3 border border-[#EADBCE] rounded-xl text-[#2D1C14] font-bold bg-[#FAF5F0]/50 outline-none focus:bg-white focus:border-[#2D1C14] text-sm" 
+              />
+            </div>
             <select 
               value={nuevoHabitoBloque} 
               onChange={(e) => setNuevoHabitoBloque(e.target.value as BloqueHabito)} 
@@ -313,7 +361,7 @@ export default function HabitsTab({
                   )}
                   {habitosBloque.map(habito => {
                     const completadoHoy = registrosHistoricos.some(r => r.habito_id === habito.id && r.fecha === strHoy);
-                    const { rachaActual, historial7Dias, porcentajeSemana } = calcularEstadisticasHabito(habito.id);
+                    const { rachaActual, historial7Dias, porcentajeSemana, diasCompletados, cantidadDiasAsignados } = calcularEstadisticasHabito(habito);
                     
                     return (
                       <li 
@@ -386,8 +434,11 @@ export default function HabitsTab({
                           </div>
 
                           <div className="flex items-center gap-2">
-                            <span className="text-[10px] font-bold text-[#8D6B57]" title="% últimos 7 días">
-                              {porcentajeSemana}% sem.
+                            <span 
+                              className="text-[10px] font-bold text-[#8D6B57]" 
+                              title={`${diasCompletados} de ${cantidadDiasAsignados} días asignados completados`}
+                            >
+                              {porcentajeSemana}% ({diasCompletados}/{cantidadDiasAsignados}d)
                             </span>
                             <div className="flex gap-1" title="Historial últimos 7 días">
                               {historial7Dias.map((completado, idx) => (
@@ -428,8 +479,8 @@ export default function HabitsTab({
               />
             </div>
 
-            <div className="grid grid-cols-3 gap-2">
-              <div>
+            <div className="grid grid-cols-1 sm:grid-cols-4 gap-2">
+              <div className="sm:col-span-1">
                 <label className="text-xs font-bold text-[#8D6B57] uppercase tracking-wider block mb-1">Emoji</label>
                 <input 
                   type="text" 
@@ -439,17 +490,28 @@ export default function HabitsTab({
                   required 
                 />
               </div>
-              <div>
-                <label className="text-xs font-bold text-[#8D6B57] uppercase tracking-wider block mb-1">Hora</label>
-                <input 
-                  type="time" 
-                  value={editHora} 
-                  onChange={(e) => setEditHora(e.target.value)} 
-                  className="w-full p-3 border border-[#EADBCE] rounded-xl bg-[#FAF5F0]/50 outline-none font-bold text-sm text-[#2D1C14]" 
-                  required 
-                />
+              <div className="sm:col-span-2">
+                <label className="text-xs font-bold text-[#8D6B57] uppercase tracking-wider block mb-1">Horario (Inicio - Fin)</label>
+                <div className="flex gap-1.5 items-center">
+                  <input 
+                    type="time" 
+                    title="Hora de inicio"
+                    value={editHoraInicio} 
+                    onChange={(e) => setEditHoraInicio(e.target.value)} 
+                    className="w-1/2 p-3 border border-[#EADBCE] rounded-xl bg-[#FAF5F0]/50 outline-none font-bold text-sm text-[#2D1C14]" 
+                    required 
+                  />
+                  <span className="text-[#8D6B57] font-bold text-xs">-</span>
+                  <input 
+                    type="time" 
+                    title="Hora de fin (opcional)"
+                    value={editHoraFin} 
+                    onChange={(e) => setEditHoraFin(e.target.value)} 
+                    className="w-1/2 p-3 border border-[#EADBCE] rounded-xl bg-[#FAF5F0]/50 outline-none font-bold text-sm text-[#2D1C14]" 
+                  />
+                </div>
               </div>
-              <div>
+              <div className="sm:col-span-1">
                 <label className="text-xs font-bold text-[#8D6B57] uppercase tracking-wider block mb-1">Bloque</label>
                 <select 
                   value={editBloque} 

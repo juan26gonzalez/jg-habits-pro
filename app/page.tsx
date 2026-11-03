@@ -8,6 +8,7 @@ import type {
   NavItem, 
   UserSession, 
   Gasto, 
+  CuotaAporte,
   Habito, 
   HabitoRegistro, 
   MercadoProducto, 
@@ -40,6 +41,7 @@ export default function Home() {
   const [strHoy, setStrHoy] = useState('');
 
   const [gastos, setGastos] = useState<Gasto[]>([]);
+  const [cuotasFamilia, setCuotasFamilia] = useState<CuotaAporte[]>([]);
   const [habitosCatalogo, setHabitosCatalogo] = useState<Habito[]>([]);
   const [registrosHistoricos, setRegistrosHistoricos] = useState<HabitoRegistro[]>([]);
   const [mercadoCatalogo, setMercadoCatalogo] = useState<MercadoProducto[]>([]);
@@ -59,16 +61,19 @@ export default function Home() {
       { data: dataHabitos },
       { data: dataRegistros },
       { data: dataMercadoCat },
-      { data: dataMercadoList }
+      { data: dataMercadoList },
+      { data: dataCuotas }
     ] = await Promise.all([
       supabase.from('finanzas_gastos').select('*'),
       supabase.from('habitos_catalogo').select('*').order('hora', { ascending: true }),
       supabase.from('habitos_registros').select('*'),
       supabase.from('mercado_catalogo').select('*').order('nombre', { ascending: true }),
-      supabase.from('mercado_lista').select('*').order('creado_en', { ascending: true })
+      supabase.from('mercado_lista').select('*').order('creado_en', { ascending: true }),
+      supabase.from('finanzas_cuotas_familia').select('*')
     ]);
 
     if (dataGastos) setGastos(dataGastos as Gasto[]);
+    if (dataCuotas) setCuotasFamilia(dataCuotas as CuotaAporte[]);
     if (dataHabitos) setHabitosCatalogo(dataHabitos as Habito[]);
     if (dataRegistros) setRegistrosHistoricos(dataRegistros as HabitoRegistro[]);
     if (dataMercadoCat) setMercadoCatalogo(dataMercadoCat as MercadoProducto[]);
@@ -208,6 +213,8 @@ export default function Home() {
       {pestañaActiva === 'finanzas' && (
         <FinancesTab 
           gastos={gastos}
+          cuotasFamilia={cuotasFamilia}
+          setCuotasFamilia={setCuotasFamilia}
           sesion={sesion}
           strHoy={strHoy}
           onGastoAgregado={cargarDatosGenerales}
