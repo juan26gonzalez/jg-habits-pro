@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
+import { getFechaActualColombia } from '@/lib/dateUtils';
 import type { 
   TabType, 
   NavItem, 
@@ -47,12 +48,11 @@ export default function Home() {
 
   const cargarDatosGenerales = useCallback(async (mostrarEsqueleto = false) => {
     if (mostrarEsqueleto) setCargandoGlobal(true);
-    const fechaHoy = new Date();
-    const hoyFechaStr = fechaHoy.toISOString().split('T')[0];
+    const { fechaStr, anio, mes } = getFechaActualColombia();
     
-    setMesActual(fechaHoy.getMonth());
-    setAnioActual(fechaHoy.getFullYear());
-    setStrHoy(hoyFechaStr);
+    setMesActual(mes);
+    setAnioActual(anio);
+    setStrHoy(fechaStr);
     
     const [
       { data: dataGastos },

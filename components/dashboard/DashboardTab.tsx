@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import Modal from '@/components/ui/Modal';
+import { getFechaActualColombia } from '@/lib/dateUtils';
 import type { Gasto, MercadoItem, Habito, HabitoRegistro } from '@/types';
 
 interface DashboardTabProps {
@@ -39,9 +40,9 @@ export default function DashboardTab({
   // Estado para el modal de detalle del día
   const [diaSeleccionado, setDiaSeleccionado] = useState<string | null>(null);
 
-  // Cálculos de KPIs superiores
-  const fechaHoyObj = new Date();
-  const diaSemanaHoy = mapFrecuenciaDias[fechaHoyObj.getDay()];
+  // Cálculos de KPIs superiores con hora de Colombia
+  const { diaSemana: diaSemanaCol } = getFechaActualColombia();
+  const diaSemanaHoy = mapFrecuenciaDias[diaSemanaCol];
   const habitosProgramadosHoy = habitosCatalogo.filter(h => h.frecuencia && h.frecuencia.includes(diaSemanaHoy));
   const habitosCompletadosHoy = registrosHistoricos.filter(r => r.fecha === strHoy);
   const porcentajeHoy = habitosProgramadosHoy.length > 0 
@@ -236,8 +237,9 @@ export default function DashboardTab({
             </button>
             <button 
               onClick={() => { 
-                setMesActual(new Date().getMonth()); 
-                setAnioActual(new Date().getFullYear()); 
+                const { mes, anio } = getFechaActualColombia();
+                setMesActual(mes); 
+                setAnioActual(anio); 
               }} 
               className="px-5 py-1.5 bg-[#2D1C14] text-white rounded-xl shadow-xs active:scale-95 transition-all"
             >

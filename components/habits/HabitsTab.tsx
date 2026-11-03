@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import Modal from '@/components/ui/Modal';
+import { sumarDiasFechaStr } from '@/lib/dateUtils';
 import type { Habito, HabitoRegistro, UserSession, BloqueHabito } from '@/types';
 
 interface HabitsTabProps {
@@ -144,11 +145,8 @@ export default function HabitsTab({
   }
 
   function calcularEstadisticasHabito(habitoId: string) {
-    const ultimos7Dias = Array.from({ length: 7 }, (_, i) => {
-      const d = new Date();
-      d.setDate(d.getDate() - i);
-      return d.toISOString().split('T')[0];
-    });
+    // Cálculo de últimos 7 días con la fecha oficial de Colombia
+    const ultimos7Dias = Array.from({ length: 7 }, (_, i) => sumarDiasFechaStr(strHoy, -i));
 
     const historial7Dias = ultimos7Dias.reverse().map(fechaStr => 
       registrosHistoricos.some(r => r.habito_id === habitoId && r.fecha === fechaStr)
@@ -165,18 +163,15 @@ export default function HabitsTab({
       .reverse();
     
     if (fechasConRegistro.length > 0) {
-      const d = new Date();
-      let fechaBusqueda = d.toISOString().split('T')[0];
+      let fechaBusqueda = strHoy;
       
       if (!fechasConRegistro.includes(fechaBusqueda)) {
-        d.setDate(d.getDate() - 1);
-        fechaBusqueda = d.toISOString().split('T')[0];
+        fechaBusqueda = sumarDiasFechaStr(strHoy, -1);
       }
 
       while (fechasConRegistro.includes(fechaBusqueda)) {
         rachaActual++;
-        d.setDate(d.getDate() - 1);
-        fechaBusqueda = d.toISOString().split('T')[0];
+        fechaBusqueda = sumarDiasFechaStr(fechaBusqueda, -1);
       }
     }
 
