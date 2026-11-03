@@ -165,21 +165,59 @@ export default function HabitsTab({
   }
 
   function calcularEstadisticasHabito(habito: Habito) {
-    // Días asignados en la semana para este hábito (ej. "Lu, Mi, Vi" = 3)
+    // Días asignados en la semana para este hábito (ej. "Lu, Mi, Vi, Sá" = 4)
     const diasAsignados = habito.frecuencia 
       ? habito.frecuencia.split(',').map(d => d.trim()).filter(Boolean)
       : diasSemanaOpciones;
     
     const cantidadDiasAsignados = Math.max(1, diasAsignados.length);
 
-    // Cálculo de últimos 7 días con la fecha oficial de Colombia
+    // Mapeo de días de la semana a su fecha en los últimos 7 días oficiales de Colombia
+    const mapAbrevDia: Record<number, string> = {
+      1: 'Lu',
+      2: 'Ma',
+      3: 'Mi',
+      4: 'Ju',
+      5: 'Vi',
+      6: 'Sá',
+      0: 'Do'
+    };
+
     const ultimos7Dias = Array.from({ length: 7 }, (_, i) => sumarDiasFechaStr(strHoy, -i));
+    
+    const fechaPorDiaSemana: Record<string, string> = {};
+    ultimos7Dias.forEach(fechaStr => {
+      const [y, m, d] = fechaStr.split('-').map(Number);
+      const dayOfWeek = new Date(y, m - 1, d, 12, 0, 0).getDay();
+      const abrev = mapAbrevDia[dayOfWeek];
+      if (abrev) fechaPorDiaSemana[abrev] = fechaStr;
+    });
 
-    const historial7Dias = ultimos7Dias.reverse().map(fechaStr => 
-      registrosHistoricos.some(r => r.habito_id === habito.id && r.fecha === fechaStr)
-    );
+    // Circulitos en función exacta de la cantidad de días del hábito
+    const circulosDias = diasAsignados.map(dia => {
+      const fechaDia = fechaPorDiaSemana[dia];
+      const completado = fechaDia 
+        ? registrosHistoricos.some(r => r.habito_id === habito.id && r.fecha === fechaDia)
+        : false;
+      return { dia, completado };
+    });
 
-    const diasCompletados = historial7Dias.filter(Boolean).length;
+    // Aseguramos que los días completados en la ventana de 7 días se reflejen en los círculos
+    const totalCompletadosSemana = registrosHistoricos.filter(
+      r => r.habito_id === habito.id && ultimos7Dias.includes(r.fecha)
+    ).length;
+
+    let completadosEnCirculos = circulosDias.filter(c => c.completado).length;
+    if (completadosEnCirculos < totalCompletadosSemana) {
+      for (let i = 0; i < circulosDias.length && completadosEnCirculos < totalCompletadosSemana; i++) {
+        if (!circulosDias[i].completado) {
+          circulosDias[i].completado = true;
+          completadosEnCirculos++;
+        }
+      }
+    }
+
+    const diasCompletados = Math.min(cantidadDiasAsignados, completadosEnCirculos);
     
     // Porcentaje en relación estricta a la cantidad de días asignados al hábito
     const porcentajeSemana = Math.min(100, Math.round((diasCompletados / cantidadDiasAsignados) * 100));
@@ -206,7 +244,7 @@ export default function HabitsTab({
 
     return { 
       rachaActual, 
-      historial7Dias, 
+      circulosDias, 
       porcentajeSemana,
       diasCompletados,
       cantidadDiasAsignados 
@@ -361,7 +399,7 @@ export default function HabitsTab({
                   )}
                   {habitosBloque.map(habito => {
                     const completadoHoy = registrosHistoricos.some(r => r.habito_id === habito.id && r.fecha === strHoy);
-                    const { rachaActual, historial7Dias, porcentajeSemana, diasCompletados, cantidadDiasAsignados } = calcularEstadisticasHabito(habito);
+                    const { rachaActual, circulosDias, porcentajeSemana, diasCompletados, cantidadDiasAsignados } = calcularEstadisticasHabito(habito);
                     
                     return (
                       <li 
@@ -440,11 +478,12 @@ export default function HabitsTab({
                             >
                               {porcentajeSemana}% ({diasCompletados}/{cantidadDiasAsignados}d)
                             </span>
-                            <div className="flex gap-1" title="Historial últimos 7 días">
-                              {historial7Dias.map((completado, idx) => (
+                            <div className="flex items-center gap-1.5" title={`Progreso: ${diasCompletados} de ${cantidadDiasAsignados} días del target`}>
+                              {circulosDias.map((item, idx) => (
                                 <span 
                                   key={idx} 
-                                  className={`w-2 h-2 rounded-full ${completado ? 'bg-[#2D1C14]' : 'bg-[#EADBCE]'}`}
+                                  title={`${item.dia}: ${item.completado ? 'Completado ✔' : 'Pendiente'}`}
+                                  className={`w-2.5 h-2.5 rounded-full transition-all ${item.completado ? 'bg-[#2D1C14] scale-105 shadow-2xs' : 'bg-[#EADBCE]'}`}
                                 ></span>
                               ))}
                             </div>
