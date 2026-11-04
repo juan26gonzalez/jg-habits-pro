@@ -103,9 +103,10 @@ export default function Home() {
   }, [cargarDatosGenerales]);
 
   // Manejadores de Hábitos
-  async function marcarHabito(habitoId: string) {
+  async function marcarHabito(habitoId: string, fechaTarget?: string) {
     if (!sesion?.user?.id) return;
-    const registroExistente = registrosHistoricos.find(r => r.habito_id === habitoId && r.fecha === strHoy);
+    const fecha = fechaTarget || strHoy;
+    const registroExistente = registrosHistoricos.find(r => r.habito_id === habitoId && r.fecha === fecha);
     if (registroExistente) {
       const { error } = await supabase.from('habitos_registros').delete().eq('id', registroExistente.id);
       if (!error) {
@@ -114,7 +115,7 @@ export default function Home() {
     } else {
       const { data, error } = await supabase
         .from('habitos_registros')
-        .insert([{ habito_id: habitoId, fecha: strHoy, completado: true, user_id: sesion.user.id }])
+        .insert([{ habito_id: habitoId, fecha, completado: true, user_id: sesion.user.id }])
         .select();
 
       if (!error && data && data[0]) {
@@ -196,6 +197,7 @@ export default function Home() {
           mercadoLista={mercadoLista}
           habitosCatalogo={habitosCatalogo}
           registrosHistoricos={registrosHistoricos}
+          onMarcarHabito={marcarHabito}
         />
       )}
 

@@ -10,7 +10,7 @@ interface HabitsTabProps {
   sesion: UserSession;
   strHoy: string;
   onHabitoAgregado: () => void;
-  onMarcarHabito: (habitoId: string) => void;
+  onMarcarHabito: (habitoId: string, fecha?: string) => void;
 }
 
 const diasSemanaOpciones = ['Lu', 'Ma', 'Mi', 'Ju', 'Vi', 'Sá', 'Do'];
@@ -30,6 +30,11 @@ export default function HabitsTab({
   onHabitoAgregado,
   onMarcarHabito
 }: HabitsTabProps) {
+  // Selector de fecha (Hoy o Ayer para edición retroactiva)
+  const fechaAyer = sumarDiasFechaStr(strHoy, -1);
+  const [fechaActiva, setFechaActiva] = useState(strHoy);
+  const esAyer = fechaActiva === fechaAyer;
+
   // Formulario de creación
   const [mostrarFormulario, setMostrarFormulario] = useState(false);
   const [nuevoHabitoNombre, setNuevoHabitoNombre] = useState('');
@@ -258,7 +263,7 @@ export default function HabitsTab({
   return (
     <div className="max-w-5xl mx-auto animate-fade-in space-y-6">
       
-      {/* Botón de apertura / cierre del formulario y Filtro de Bloque */}
+      {/* Botón de apertura / cierre del formulario, Selector de Fecha (Hoy/Ayer) y Filtro de Bloque */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-white p-3.5 rounded-3xl border border-[#EADBCE]/80 shadow-[0_2px_16px_rgba(45,28,20,0.03)]">
         <button 
           onClick={() => setMostrarFormulario(!mostrarFormulario)}
@@ -267,18 +272,56 @@ export default function HabitsTab({
           <span>{mostrarFormulario ? '✕ Cerrar' : '🎯 Nuevo Target'}</span>
         </button>
 
-        <div className="flex items-center gap-1 bg-[#FAF5F0] p-1 rounded-xl text-xs font-bold border border-[#EADBCE]/60">
-          {(['Todos', 'Mañana', 'Tarde', 'Noche'] as const).map(b => (
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Selector de Fecha: Hoy / Ayer */}
+          <div className="flex items-center gap-1 bg-[#FAF5F0] p-1 rounded-xl text-xs font-bold border border-[#EADBCE]/60">
             <button
-              key={b}
-              onClick={() => setFiltroBloque(b)}
-              className={`px-3 py-1.5 rounded-lg transition-all ${filtroBloque === b ? 'bg-[#2D1C14] text-white shadow-xs' : 'text-[#8D6B57] hover:text-[#2D1C14]'}`}
+              type="button"
+              onClick={() => setFechaActiva(strHoy)}
+              className={`px-3 py-1.5 rounded-lg transition-all ${fechaActiva === strHoy ? 'bg-[#2D1C14] text-white shadow-xs' : 'text-[#8D6B57] hover:text-[#2D1C14]'}`}
             >
-              {b}
+              ✨ Hoy
             </button>
-          ))}
+            <button
+              type="button"
+              onClick={() => setFechaActiva(fechaAyer)}
+              className={`px-3 py-1.5 rounded-lg transition-all ${fechaActiva === fechaAyer ? 'bg-[#2D1C14] text-white shadow-xs' : 'text-[#8D6B57] hover:text-[#2D1C14]'}`}
+            >
+              ⏪ Ayer
+            </button>
+          </div>
+
+          {/* Filtro de Bloques */}
+          <div className="flex items-center gap-1 bg-[#FAF5F0] p-1 rounded-xl text-xs font-bold border border-[#EADBCE]/60">
+            {(['Todos', 'Mañana', 'Tarde', 'Noche'] as const).map(b => (
+              <button
+                key={b}
+                onClick={() => setFiltroBloque(b)}
+                className={`px-3 py-1.5 rounded-lg transition-all ${filtroBloque === b ? 'bg-[#2D1C14] text-white shadow-xs' : 'text-[#8D6B57] hover:text-[#2D1C14]'}`}
+              >
+                {b}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
+
+      {/* Banner informativo al estar en modo Ayer */}
+      {esAyer && (
+        <div className="bg-[#FAF5F0] border border-[#EADBCE] text-[#4A3225] p-3 rounded-2xl flex items-center justify-between text-xs font-bold shadow-2xs animate-fade-in">
+          <div className="flex items-center gap-2">
+            <span className="text-base">⏪</span>
+            <span>Viendo y registrando targets de <strong>Ayer ({fechaAyer})</strong>. Puedes marcar o desmarcar los targets completados ayer.</span>
+          </div>
+          <button 
+            type="button"
+            onClick={() => setFechaActiva(strHoy)}
+            className="text-xs bg-[#2D1C14] text-white px-3 py-1 rounded-xl hover:bg-[#3E271D] active:scale-95 transition-all shadow-xs shrink-0"
+          >
+            Volver a Hoy
+          </button>
+        </div>
+      )}
 
       {/* Formulario Desplegable */}
       {mostrarFormulario && (
@@ -398,24 +441,24 @@ export default function HabitsTab({
                     </p>
                   )}
                   {habitosBloque.map(habito => {
-                    const completadoHoy = registrosHistoricos.some(r => r.habito_id === habito.id && r.fecha === strHoy);
+                    const completadoDia = registrosHistoricos.some(r => r.habito_id === habito.id && r.fecha === fechaActiva);
                     const { rachaActual, circulosDias, porcentajeSemana, diasCompletados, cantidadDiasAsignados } = calcularEstadisticasHabito(habito);
                     
                     return (
                       <li 
                         key={habito.id} 
-                        className={`flex flex-col p-4 rounded-2xl transition-all border group ${completadoHoy ? 'bg-[#FAF5F0] border-[#EADBCE]' : 'bg-white border-[#EADBCE]/70 hover:border-[#D9C4B3]'}`}
+                        className={`flex flex-col p-4 rounded-2xl transition-all border group ${completadoDia ? 'bg-[#FAF5F0] border-[#EADBCE]' : 'bg-white border-[#EADBCE]/70 hover:border-[#D9C4B3]'}`}
                       >
                         <div className="flex items-start gap-3">
                           
-                          {/* Check para completar hábito */}
+                          {/* Check para completar hábito en el día activo (Hoy o Ayer) */}
                           <button 
                             type="button"
-                            onClick={() => onMarcarHabito(habito.id)}
+                            onClick={() => onMarcarHabito(habito.id, fechaActiva)}
                             className="mt-0.5 cursor-pointer active:scale-90 transition-transform shrink-0"
-                            title={completadoHoy ? 'Marcar pendiente' : 'Marcar completado'}
+                            title={completadoDia ? (esAyer ? 'Desmarcar ayer' : 'Desmarcar hoy') : (esAyer ? 'Marcar ayer como completado' : 'Marcar como completado')}
                           >
-                            {completadoHoy ? (
+                            {completadoDia ? (
                               <span className="w-7 h-7 rounded-lg bg-[#2D1C14] text-white flex items-center justify-center font-bold text-sm shadow-xs">✓</span>
                             ) : (
                               <div className="w-7 h-7 rounded-lg border-2 border-[#EADBCE] hover:border-[#2D1C14] flex items-center justify-center transition-colors"></div>
@@ -425,15 +468,24 @@ export default function HabitsTab({
                           <div className="flex flex-col flex-grow min-w-0">
                             <div className="flex items-center gap-2">
                               <span className="text-lg">{habito.emoji}</span>
-                              <span className={`font-bold text-sm truncate ${completadoHoy ? 'text-[#8D6B57] line-through' : 'text-[#2D1C14]'}`}>
+                              <span className={`font-bold text-sm truncate ${completadoDia ? 'text-[#8D6B57] line-through' : 'text-[#2D1C14]'}`}>
                                 {habito.nombre}
                               </span>
                             </div>
 
                             <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
                               {habito.hora && (
-                                <span className="text-[10px] font-bold text-[#8D6B57] bg-[#FAF5F0] px-2 py-0.5 rounded-md border border-[#EADBCE]/50">
-                                  ⏰ {habito.hora}
+                                <span className="text-[10px] font-bold text-[#4A3225] bg-[#FAF5F0] px-2.5 py-0.5 rounded-md border border-[#EADBCE]/80 flex items-center gap-1 shadow-2xs">
+                                  <span>⏰</span>
+                                  {habito.hora.includes(' - ') ? (
+                                    <span>
+                                      Inicio: <strong className="text-[#2D1C14]">{habito.hora.split(' - ')[0]}</strong> • Fin: <strong className="text-[#2D1C14]">{habito.hora.split(' - ')[1]}</strong>
+                                    </span>
+                                  ) : (
+                                    <span>
+                                      Hora: <strong className="text-[#2D1C14]">{habito.hora}</strong>
+                                    </span>
+                                  )}
                                 </span>
                               )}
                               {habito.frecuencia && (

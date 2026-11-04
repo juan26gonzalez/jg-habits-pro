@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import Modal from '@/components/ui/Modal';
-import { getFechaActualColombia } from '@/lib/dateUtils';
+import { getFechaActualColombia, sumarDiasFechaStr } from '@/lib/dateUtils';
 import type { Gasto, MercadoItem, Habito, HabitoRegistro } from '@/types';
 
 interface DashboardTabProps {
@@ -13,6 +13,7 @@ interface DashboardTabProps {
   mercadoLista: MercadoItem[];
   habitosCatalogo: Habito[];
   registrosHistoricos: HabitoRegistro[];
+  onMarcarHabito: (habitoId: string, fecha?: string) => void;
 }
 
 const nombresMeses = [
@@ -32,6 +33,7 @@ export default function DashboardTab({
   mercadoLista,
   habitosCatalogo,
   registrosHistoricos,
+  onMarcarHabito,
 }: DashboardTabProps) {
   const [filtroHabitos, setFiltroHabitos] = useState(true);
   const [filtroFinanzas, setFiltroFinanzas] = useState(true);
@@ -114,15 +116,38 @@ export default function DashboardTab({
               🛒 Súper ({comprasDelDia.length})
             </span>
           )}
-          {filtroHabitos && habitosDelDia.map((h, i) => {
-            const habitoInfo = habitosCatalogo.find(hc => hc.id === h.habito_id);
-            if (!habitoInfo) return null;
+          {/* Solo actividades programadas para este día */}
+          {filtroHabitos && habitosProgramadosEsteDia.slice(0, 3).map((h) => {
+            const completado = habitosDelDia.some(r => r.habito_id === h.id);
             return (
-              <span key={`h-${i}`} className="bg-white text-[#3E271D] border border-[#EADBCE] text-[10px] font-bold px-2 py-0.5 rounded-md flex items-center gap-1 truncate shadow-2xs">
-                {habitoInfo.emoji} {habitoInfo.nombre}
+              <span 
+                key={`prog-${h.id}`} 
+                className={`border text-[10px] font-bold px-2 py-0.5 rounded-md flex items-center justify-between gap-1 truncate shadow-2xs transition-all ${
+                  completado 
+                    ? 'bg-[#FAF5F0] border-[#EADBCE] text-[#2D1C14]' 
+                    : 'bg-white border-[#EADBCE]/60 text-[#6F4A39]'
+                }`}
+                title={`${h.nombre} (${h.hora || h.bloque}) - ${completado ? 'Completado' : 'Pendiente'}`}
+              >
+                <span className="truncate flex items-center gap-1">
+                  <span>{h.emoji}</span>
+                  <span className={`truncate ${completado ? 'line-through opacity-75' : ''}`}>{h.nombre}</span>
+                </span>
+                {completado ? (
+                  <span className="text-[9px] text-[#2D1C14] font-black shrink-0">✓</span>
+                ) : (
+                  <span className="text-[8px] text-[#8D6B57] font-semibold shrink-0">
+                    {h.hora ? (h.hora.includes(' - ') ? h.hora.split(' - ')[0] : h.hora) : ''}
+                  </span>
+                )}
               </span>
             );
           })}
+          {filtroHabitos && habitosProgramadosEsteDia.length > 3 && (
+            <span className="text-[9px] font-bold text-[#8D6B57] px-1">
+              +{habitosProgramadosEsteDia.length - 3} más
+            </span>
+          )}
         </div>
       </div>
     );
@@ -236,6 +261,17 @@ export default function DashboardTab({
               ◀
             </button>
             <button 
+              type="button"
+              onClick={() => { 
+                const fechaAyer = sumarDiasFechaStr(strHoy, -1);
+                setDiaSeleccionado(fechaAyer);
+              }} 
+              className="px-3.5 py-1.5 bg-white hover:bg-[#FAF5F0] text-[#6F4A39] hover:text-[#2D1C14] rounded-xl shadow-2xs active:scale-95 transition-all flex items-center gap-1 border border-[#EADBCE]/60"
+              title="Abrir y editar actividades de ayer"
+            >
+              <span>⏪</span> Ayer
+            </button>
+            <button 
               onClick={() => { 
                 const { mes, anio } = getFechaActualColombia();
                 setMesActual(mes); 
@@ -273,30 +309,130 @@ export default function DashboardTab({
         <Modal 
           isOpen={Boolean(diaSeleccionado)} 
           onClose={() => setDiaSeleccionado(null)} 
-          title={`Detalle: ${infoDiaSeleccionado.fechaFormato}`}
+          title={`Actividades: ${infoDiaSeleccionado.fechaFormato}`}
         >
           <div className="space-y-6">
             
+            {/* Navegación rápida de días dentro del modal */}
+            <div className="flex items-center justify-between bg-[#FAF5F0] p-2.5 rounded-2xl border border-[#EADBCE]/60 text-xs">
+              <button 
+                type="button"
+                onClick={() => setDiaSeleccionado(sumarDiasFechaStr(diaSeleccionado, -1))}
+                className="px-3 py-1.5 rounded-xl bg-white hover:bg-[#FAF5F0] text-[#2D1C14] font-bold border border-[#EADBCE]/60 flex items-center gap-1 active:scale-95 transition-all shadow-2xs"
+                title="Ir al día anterior"
+              >
+                <span>◀</span> Anterior
+              </button>
+              <div className="text-center">
+                <span className="font-extrabold text-[#2D1C14] text-xs block">
+                  {diaSeleccionado === strHoy ? '✨ Hoy' : (diaSeleccionado === sumarDiasFechaStr(strHoy, -1) ? '⏪ Ayer' : infoDiaSeleccionado.fechaFormato)}
+                </span>
+                <span className="text-[10px] text-[#8D6B57] font-semibold">
+                  {diaSeleccionado}
+                </span>
+              </div>
+              <button 
+                type="button"
+                onClick={() => setDiaSeleccionado(sumarDiasFechaStr(diaSeleccionado, 1))}
+                className="px-3 py-1.5 rounded-xl bg-white hover:bg-[#FAF5F0] text-[#2D1C14] font-bold border border-[#EADBCE]/60 flex items-center gap-1 active:scale-95 transition-all shadow-2xs"
+                title="Ir al día siguiente"
+              >
+                Siguiente <span>▶</span>
+              </button>
+            </div>
+            
             {/* Hábitos de este día */}
             <div>
-              <h4 className="text-xs font-bold uppercase tracking-wider text-[#8D6B57] mb-2 flex items-center gap-1.5">
-                <span>🗓️</span> Targets ({infoDiaSeleccionado.registrosDia.length} / {infoDiaSeleccionado.programadosDia.length})
-              </h4>
+              <div className="flex justify-between items-center mb-2.5">
+                <h4 className="text-xs font-bold uppercase tracking-wider text-[#8D6B57] flex items-center gap-1.5">
+                  <span>🎯</span> Targets Programados ({infoDiaSeleccionado.registrosDia.length} / {infoDiaSeleccionado.programadosDia.length})
+                </h4>
+                {diaSeleccionado === sumarDiasFechaStr(strHoy, -1) && (
+                  <span className="text-[10px] font-bold text-[#8D6B57] bg-[#FAF5F0] px-2 py-0.5 rounded-md border border-[#EADBCE]/60">
+                    Editando ayer
+                  </span>
+                )}
+              </div>
+
               {infoDiaSeleccionado.programadosDia.length === 0 ? (
-                <p className="text-xs text-[#8D6B57] bg-[#FAF5F0] p-3 rounded-xl border border-[#EADBCE]">Sin targets programados para este día.</p>
+                <p className="text-xs text-[#8D6B57] bg-[#FAF5F0] p-4 rounded-2xl border border-[#EADBCE] text-center font-medium">
+                  Sin targets programados para este día.
+                </p>
               ) : (
-                <ul className="space-y-1.5">
+                <ul className="space-y-2">
                   {infoDiaSeleccionado.programadosDia.map(h => {
                     const completado = infoDiaSeleccionado.registrosDia.some(r => r.habito_id === h.id);
                     return (
-                      <li key={h.id} className={`p-2.5 rounded-xl border flex items-center justify-between text-xs ${completado ? 'bg-[#FAF5F0] border-[#EADBCE]' : 'bg-white border-[#EADBCE]/60'}`}>
-                        <span className="font-bold text-[#2D1C14] flex items-center gap-2">
-                          <span className="text-base">{h.emoji}</span> {h.nombre}
-                          <span className="text-[10px] text-[#8D6B57] font-medium">({h.hora || h.bloque})</span>
-                        </span>
-                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${completado ? 'bg-[#2D1C14] text-white' : 'bg-[#FAF5F0] text-[#8D6B57]'}`}>
-                          {completado ? 'Completado ✔' : 'Pendiente'}
-                        </span>
+                      <li 
+                        key={h.id} 
+                        className={`p-3 rounded-2xl border transition-all flex items-center justify-between gap-3 ${
+                          completado ? 'bg-[#FAF5F0] border-[#EADBCE]' : 'bg-white border-[#EADBCE]/70 hover:border-[#D9C4B3]'
+                        }`}
+                      >
+                        <div className="flex items-center gap-3 min-w-0">
+                          {/* Botón Checkbox interactivo para editar el día */}
+                          <button 
+                            type="button"
+                            onClick={() => onMarcarHabito(h.id, diaSeleccionado)}
+                            className="cursor-pointer active:scale-90 transition-transform shrink-0"
+                            title={completado ? 'Marcar como pendiente' : 'Marcar como completado'}
+                          >
+                            {completado ? (
+                              <span className="w-7 h-7 rounded-lg bg-[#2D1C14] text-white flex items-center justify-center font-bold text-sm shadow-xs">✓</span>
+                            ) : (
+                              <div className="w-7 h-7 rounded-lg border-2 border-[#EADBCE] hover:border-[#2D1C14] flex items-center justify-center transition-colors"></div>
+                            )}
+                          </button>
+
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2">
+                              <span className="text-lg">{h.emoji}</span>
+                              <span className={`font-bold text-sm truncate ${completado ? 'text-[#8D6B57] line-through' : 'text-[#2D1C14]'}`}>
+                                {h.nombre}
+                              </span>
+                            </div>
+
+                            {/* Horario bien detallado (Inicio y Fin) */}
+                            <div className="flex flex-wrap items-center gap-1.5 mt-1">
+                              {h.hora ? (
+                                <span className="text-[10px] font-bold text-[#4A3225] bg-white px-2 py-0.5 rounded-md border border-[#EADBCE]/80 flex items-center gap-1 shadow-2xs">
+                                  <span>⏰</span>
+                                  {h.hora.includes(' - ') ? (
+                                    <span>
+                                      Inicio: <strong className="text-[#2D1C14]">{h.hora.split(' - ')[0]}</strong> • Fin: <strong className="text-[#2D1C14]">{h.hora.split(' - ')[1]}</strong>
+                                    </span>
+                                  ) : (
+                                    <span>
+                                      Hora: <strong className="text-[#2D1C14]">{h.hora}</strong>
+                                    </span>
+                                  )}
+                                </span>
+                              ) : (
+                                <span className="text-[10px] text-[#8D6B57] bg-white px-2 py-0.5 rounded-md border border-[#EADBCE]/60">
+                                  Sin horario asignado
+                                </span>
+                              )}
+                              {h.bloque && (
+                                <span className="text-[9px] font-bold uppercase text-[#8D6B57] bg-white px-1.5 py-0.5 rounded border border-[#EADBCE]/70">
+                                  {h.bloque}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Botón de acción directo */}
+                        <button 
+                          type="button"
+                          onClick={() => onMarcarHabito(h.id, diaSeleccionado)}
+                          className={`text-xs font-bold px-3 py-1.5 rounded-xl border transition-all active:scale-95 shrink-0 ${
+                            completado 
+                              ? 'bg-[#2D1C14] text-white border-[#2D1C14] shadow-xs' 
+                              : 'bg-[#FAF5F0] text-[#6F4A39] border-[#EADBCE] hover:border-[#2D1C14]'
+                          }`}
+                        >
+                          {completado ? 'Listo ✔' : 'Completar'}
+                        </button>
                       </li>
                     );
                   })}
