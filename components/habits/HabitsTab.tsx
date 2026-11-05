@@ -35,6 +35,31 @@ export default function HabitsTab({
   const [fechaActiva, setFechaActiva] = useState(strHoy);
   const esAyer = fechaActiva === fechaAyer;
 
+  // Filtro para mostrar solo los targets asignados al día activo (activado por defecto)
+  const [soloProgramadosDia, setSoloProgramadosDia] = useState(true);
+
+  // Cálculo del día de la semana para la fecha activa (formato Colombia)
+  const diasSemanaMap = ['Do', 'Lu', 'Ma', 'Mi', 'Ju', 'Vi', 'Sá'];
+  const diasSemanaNombres = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+  const [yActivo, mActivo, dActivo] = fechaActiva.split('-').map(Number);
+  const dateActiva = new Date(yActivo, mActivo - 1, dActivo, 12, 0, 0);
+  const diaSemanaIndex = dateActiva.getDay();
+  const diaSemanaActivo = diasSemanaMap[diaSemanaIndex];
+  const nombreDiaCompleto = diasSemanaNombres[diaSemanaIndex];
+
+  function habitoAsignadoEsteDia(habito: Habito): boolean {
+    if (!habito.frecuencia || habito.frecuencia.trim() === '') {
+      return true;
+    }
+    const dias = habito.frecuencia.split(',').map(d => d.trim());
+    return dias.includes(diaSemanaActivo);
+  }
+
+  // Lista de hábitos filtrada por el día asignado
+  const habitosFiltradosPorDia = soloProgramadosDia
+    ? habitosCatalogo.filter(habitoAsignadoEsteDia)
+    : habitosCatalogo;
+
   // Formulario de creación
   const [mostrarFormulario, setMostrarFormulario] = useState(false);
   const [nuevoHabitoNombre, setNuevoHabitoNombre] = useState('');
@@ -291,6 +316,26 @@ export default function HabitsTab({
             </button>
           </div>
 
+          {/* Filtro: Solo día asignado vs Toda la semana */}
+          <div className="flex items-center gap-1 bg-[#FAF5F0] p-1 rounded-xl text-xs font-bold border border-[#EADBCE]/60">
+            <button
+              type="button"
+              onClick={() => setSoloProgramadosDia(true)}
+              className={`px-3 py-1.5 rounded-lg transition-all ${soloProgramadosDia ? 'bg-[#2D1C14] text-white shadow-xs' : 'text-[#8D6B57] hover:text-[#2D1C14]'}`}
+              title={`Mostrar solo targets asignados para ${nombreDiaCompleto} (${diaSemanaActivo})`}
+            >
+              🗓️ Solo {diaSemanaActivo} ({habitosCatalogo.filter(habitoAsignadoEsteDia).length})
+            </button>
+            <button
+              type="button"
+              onClick={() => setSoloProgramadosDia(false)}
+              className={`px-3 py-1.5 rounded-lg transition-all ${!soloProgramadosDia ? 'bg-[#2D1C14] text-white shadow-xs' : 'text-[#8D6B57] hover:text-[#2D1C14]'}`}
+              title="Mostrar todos los targets del catálogo sin filtrar por día"
+            >
+              Semana ({habitosCatalogo.length})
+            </button>
+          </div>
+
           {/* Filtro de Bloques */}
           <div className="flex items-center gap-1 bg-[#FAF5F0] p-1 rounded-xl text-xs font-bold border border-[#EADBCE]/60">
             {(['Todos', 'Mañana', 'Tarde', 'Noche'] as const).map(b => (
@@ -306,22 +351,24 @@ export default function HabitsTab({
         </div>
       </div>
 
-      {/* Banner informativo al estar en modo Ayer */}
-      {esAyer && (
-        <div className="bg-[#FAF5F0] border border-[#EADBCE] text-[#4A3225] p-3 rounded-2xl flex items-center justify-between text-xs font-bold shadow-2xs animate-fade-in">
-          <div className="flex items-center gap-2">
-            <span className="text-base">⏪</span>
-            <span>Viendo y registrando targets de <strong>Ayer ({fechaAyer})</strong>. Puedes marcar o desmarcar los targets completados ayer.</span>
-          </div>
+      {/* Banner informativo de día activo y filtro */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center text-xs text-[#8D6B57] bg-[#FAF5F0] p-3 rounded-2xl border border-[#EADBCE]/80 gap-2 shadow-2xs animate-fade-in">
+        <div className="flex items-center gap-2">
+          <span className="text-base">{esAyer ? '⏪' : '🎯'}</span>
+          <span>
+            Targets de <strong>{esAyer ? 'Ayer' : 'Hoy'} ({nombreDiaCompleto}, {fechaActiva})</strong>: {soloProgramadosDia ? `${habitosFiltradosPorDia.length} asignados a este día` : `mostrando los ${habitosCatalogo.length} de la semana`}
+          </span>
+        </div>
+        {esAyer && (
           <button 
             type="button"
             onClick={() => setFechaActiva(strHoy)}
-            className="text-xs bg-[#2D1C14] text-white px-3 py-1 rounded-xl hover:bg-[#3E271D] active:scale-95 transition-all shadow-xs shrink-0"
+            className="text-[11px] font-bold bg-[#2D1C14] text-white px-2.5 py-1 rounded-xl hover:bg-[#3E271D] active:scale-95 transition-all shadow-xs shrink-0"
           >
             Volver a Hoy
           </button>
-        </div>
-      )}
+        )}
+      </div>
 
       {/* Formulario Desplegable */}
       {mostrarFormulario && (
@@ -421,7 +468,7 @@ export default function HabitsTab({
       {/* Columnas de Hábitos por Bloque */}
       <div className={`grid grid-cols-1 ${filtroBloque === 'Todos' ? 'md:grid-cols-3' : 'md:grid-cols-1'} gap-5`}>
         {bloquesVisibles.map((bloque) => {
-          const habitosBloque = habitosCatalogo.filter(h => h.bloque === bloque);
+          const habitosBloque = habitosFiltradosPorDia.filter(h => h.bloque === bloque);
           const config = bloqueConfig[bloque];
 
           return (
@@ -437,7 +484,10 @@ export default function HabitsTab({
                 <ul className="space-y-3">
                   {habitosBloque.length === 0 && (
                     <p className="text-xs font-medium text-[#8D6B57] p-6 border border-dashed border-[#EADBCE] rounded-2xl text-center">
-                      Sin targets en este bloque
+                      {soloProgramadosDia 
+                        ? `Sin targets asignados para ${esAyer ? 'ayer' : 'hoy'} (${nombreDiaCompleto}) en este bloque`
+                        : 'Sin targets en este bloque'
+                      }
                     </p>
                   )}
                   {habitosBloque.map(habito => {
