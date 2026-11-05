@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import Modal from '@/components/ui/Modal';
+import { limpiarConceptoGasto } from '@/types';
 import type { Gasto, CuotaAporte, UserSession } from '@/types';
 
 interface TarjetaFinanzasProps {
@@ -261,7 +262,7 @@ export default function TarjetaFinanzas({
         
         {/* Concepto y Monto en Marrón Elegante */}
         <div>
-          <h3 className="text-xl font-bold text-[#2D1C14] tracking-tight leading-snug">{gasto?.concepto}</h3>
+          <h3 className="text-xl font-bold text-[#2D1C14] tracking-tight leading-snug">{limpiarConceptoGasto(gasto?.concepto)}</h3>
           <p className="text-3xl font-extrabold text-[#2D1C14] mt-1 tracking-tight">${montoTotal.toLocaleString('es-CO')}</p>
         </div>
         
@@ -491,7 +492,7 @@ export default function TarjetaFinanzas({
         >
           <div className="space-y-4">
             <p className="text-sm text-[#6F4A39]">
-              ¿Estás seguro de que deseas eliminar el gasto <strong className="text-[#2D1C14]">{gasto.concepto}</strong>?
+              ¿Estás seguro de que deseas eliminar el gasto <strong className="text-[#2D1C14]">{limpiarConceptoGasto(gasto.concepto)}</strong>?
             </p>
             <p className="text-xs text-rose-700 bg-rose-50 p-3 rounded-xl border border-rose-200">
               Esta acción eliminará el gasto y todos sus aportes registrados de forma permanente.

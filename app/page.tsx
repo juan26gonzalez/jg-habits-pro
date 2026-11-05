@@ -230,6 +230,8 @@ export default function Home() {
           presupuestoMercado={presupuestoMercado}
           setPresupuestoMercado={setPresupuestoMercado}
           sesion={sesion}
+          gastos={gastos}
+          strHoy={strHoy}
           onMercadoActualizado={cargarDatosGenerales}
           onAgregarAlCarrito={agregarAlCarrito}
           onActualizarItem={actualizarItemLista}

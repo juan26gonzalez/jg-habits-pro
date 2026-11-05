@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import Modal from '@/components/ui/Modal';
 import { getFechaActualColombia, sumarDiasFechaStr } from '@/lib/dateUtils';
-import type { Gasto, MercadoItem, Habito, HabitoRegistro } from '@/types';
+import { limpiarConceptoGasto, extraerCompraDeGasto } from '@/types';
+import type { Gasto, MercadoItem, Habito, HabitoRegistro, CompraHistorial } from '@/types';
 
 interface DashboardTabProps {
   mesActual: number;
@@ -108,7 +109,7 @@ export default function DashboardTab({
         <div className="flex flex-col gap-1.5 flex-grow">
           {filtroFinanzas && gastosDelDia.map((g, i) => (
             <span key={`g-${i}`} className="bg-[#FAF5F0] text-[#3E271D] border border-[#EADBCE] text-[10px] font-bold px-2 py-0.5 rounded-md flex items-center gap-1 truncate shadow-2xs">
-              💳 {g.concepto}
+              💳 {limpiarConceptoGasto(g.concepto)}
             </span>
           ))}
           {filtroMercado && comprasDelDia.length > 0 && (
@@ -161,6 +162,9 @@ export default function DashboardTab({
     const diaSemanaStr = mapFrecuenciaDias[dateObj.getDay()];
     
     const gastosDia = gastos.filter(g => g.fecha_vencimiento === diaSeleccionado);
+    const comprasGuardadasDia = gastosDia
+      .map(extraerCompraDeGasto)
+      .filter((c): c is CompraHistorial => c !== null);
     const comprasDia = mercadoLista.filter(item => item.creado_en && item.creado_en.split('T')[0] === diaSeleccionado);
     const registrosDia = registrosHistoricos.filter(r => r.fecha === diaSeleccionado);
     const programadosDia = habitosCatalogo.filter(h => h.frecuencia && h.frecuencia.includes(diaSemanaStr));
@@ -168,6 +172,7 @@ export default function DashboardTab({
     return {
       fechaFormato: `${d} de ${nombresMeses[m - 1]} de ${y}`,
       gastosDia,
+      comprasGuardadasDia,
       comprasDia,
       registrosDia,
       programadosDia
@@ -452,7 +457,7 @@ export default function DashboardTab({
                   {infoDiaSeleccionado.gastosDia.map(g => (
                     <li key={g.id} className="p-2.5 bg-[#FAF5F0] border border-[#EADBCE] rounded-xl flex items-center justify-between text-xs">
                       <div>
-                        <p className="font-bold text-[#2D1C14]">{g.concepto}</p>
+                        <p className="font-bold text-[#2D1C14]">{limpiarConceptoGasto(g.concepto)}</p>
                         <span className="text-[9px] font-bold uppercase text-[#8D6B57] bg-white px-1.5 py-0.5 rounded border border-[#EADBCE]">{g.categoria || 'General'}</span>
                       </div>
                       <span className="font-extrabold text-[#2D1C14] text-sm">${Number(g.monto_total).toLocaleString('es-CO')}</span>
@@ -462,22 +467,42 @@ export default function DashboardTab({
               )}
             </div>
 
-            {/* Compras de supermercado este día */}
+            {/* Compras de supermercado este día (guardadas y activas) */}
             <div>
               <h4 className="text-xs font-bold uppercase tracking-wider text-[#8D6B57] mb-2 flex items-center gap-1.5">
-                <span>🛒</span> Compras Registradas
+                <span>🛒</span> Compras de Mercado Guardadas ({infoDiaSeleccionado.comprasGuardadasDia.length})
               </h4>
-              {infoDiaSeleccionado.comprasDia.length === 0 ? (
+              {infoDiaSeleccionado.comprasGuardadasDia.length === 0 && infoDiaSeleccionado.comprasDia.length === 0 ? (
                 <p className="text-xs text-[#8D6B57] bg-[#FAF5F0] p-3 rounded-xl border border-[#EADBCE]">Sin compras registradas en esta fecha.</p>
               ) : (
-                <ul className="space-y-1.5">
-                  {infoDiaSeleccionado.comprasDia.map(item => (
-                    <li key={item.id} className="p-2.5 bg-[#FAF5F0] border border-[#EADBCE] rounded-xl flex items-center justify-between text-xs">
-                      <span className="font-bold text-[#2D1C14]">{item.producto_nombre} (x{item.cantidad})</span>
-                      <span className="font-extrabold text-[#2D1C14]">${((item.cantidad * item.precio_unitario) * (1 - (item.descuento_porcentaje || 0) / 100)).toLocaleString('es-CO')}</span>
-                    </li>
+                <div className="space-y-3">
+                  {infoDiaSeleccionado.comprasGuardadasDia.map(c => (
+                    <div key={c.id} className="p-3 bg-[#FAF5F0] border border-[#EADBCE] rounded-2xl text-xs space-y-2">
+                      <div className="flex justify-between items-center">
+                        <span className="font-bold text-[#2D1C14] text-sm">🛍️ {c.nombre}</span>
+                        <span className="font-extrabold text-[#2D1C14] text-sm">${Number(c.total).toLocaleString('es-CO')}</span>
+                      </div>
+                      <div className="text-[11px] text-[#6F4A39] flex flex-wrap gap-1">
+                        {c.items.map((item, idx) => (
+                          <span key={idx} className="bg-white px-2 py-0.5 rounded-md border border-[#EADBCE]/70">
+                            {item.nombre} (x{item.cantidad})
+                          </span>
+                        ))}
+                      </div>
+                    </div>
                   ))}
-                </ul>
+
+                  {infoDiaSeleccionado.comprasDia.length > 0 && infoDiaSeleccionado.comprasGuardadasDia.length === 0 && (
+                    <ul className="space-y-1.5">
+                      {infoDiaSeleccionado.comprasDia.map(item => (
+                        <li key={item.id} className="p-2.5 bg-[#FAF5F0] border border-[#EADBCE] rounded-xl flex items-center justify-between text-xs">
+                          <span className="font-bold text-[#2D1C14]">{item.producto_nombre} (x{item.cantidad})</span>
+                          <span className="font-extrabold text-[#2D1C14]">${((item.cantidad * item.precio_unitario) * (1 - (item.descuento_porcentaje || 0) / 100)).toLocaleString('es-CO')}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
               )}
             </div>
 

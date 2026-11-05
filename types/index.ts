@@ -61,6 +61,50 @@ export interface MercadoItem {
   creado_en?: string;
 }
 
+export interface CompraHistorialItem {
+  nombre: string;
+  categoria?: string;
+  cantidad: number;
+  precio_unitario: number;
+  descuento_porcentaje?: number;
+  subtotal: number;
+}
+
+export interface CompraHistorial {
+  id: string;
+  gasto_id?: string;
+  nombre: string;
+  fecha: string;
+  creado_en?: string;
+  total: number;
+  items_count: number;
+  items: CompraHistorialItem[];
+  user_id?: string;
+}
+
+export function limpiarConceptoGasto(concepto?: string | null): string {
+  if (!concepto) return '';
+  return concepto.split(' ||JGM_COMPRA::')[0].trim();
+}
+
+export function extraerCompraDeGasto(gasto: Gasto): CompraHistorial | null {
+  if (!gasto?.concepto || !gasto.concepto.includes(' ||JGM_COMPRA::')) {
+    return null;
+  }
+  try {
+    const jsonStr = gasto.concepto.split(' ||JGM_COMPRA::')[1];
+    const data = JSON.parse(jsonStr);
+    return {
+      ...data,
+      gasto_id: gasto.id,
+      total: Number(gasto.monto_total) || data.total,
+      fecha: gasto.fecha_vencimiento || data.fecha
+    };
+  } catch {
+    return null;
+  }
+}
+
 export interface NavItem {
   id: TabType;
   icon: string;
