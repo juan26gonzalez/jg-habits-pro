@@ -66,7 +66,7 @@ const datosInicialesSemana: WeeklyTrainingHabit[] = [
   { id: 'hab-dom', day_of_week: 'Domingo', activity: 'Descanso Activo', is_completed: false }
 ];
 
-const SQL_MIGRACION = `-- Ejecuta este script en Supabase SQL Editor:
+const SQL_MIGRACION = `-- 1. Crear tabla de entrenamientos semanales vinculada a usuarios
 CREATE TABLE IF NOT EXISTS public.weekly_training_habits (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     day_of_week TEXT NOT NULL,
@@ -78,14 +78,29 @@ CREATE TABLE IF NOT EXISTS public.weekly_training_habits (
     CONSTRAINT unique_user_day UNIQUE(user_id, day_of_week)
 );
 
+-- 2. Habilitar Row Level Security (RLS)
 ALTER TABLE public.weekly_training_habits ENABLE ROW LEVEL SECURITY;
 
+-- 3. Políticas de seguridad por usuario (idempotentes)
+DROP POLICY IF EXISTS "habitos_entrenamiento_select" ON public.weekly_training_habits;
 CREATE POLICY "habitos_entrenamiento_select" ON public.weekly_training_habits FOR SELECT TO authenticated USING (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "habitos_entrenamiento_insert" ON public.weekly_training_habits;
 CREATE POLICY "habitos_entrenamiento_insert" ON public.weekly_training_habits FOR INSERT TO authenticated WITH CHECK (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "habitos_entrenamiento_update" ON public.weekly_training_habits;
 CREATE POLICY "habitos_entrenamiento_update" ON public.weekly_training_habits FOR UPDATE TO authenticated USING (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "habitos_entrenamiento_delete" ON public.weekly_training_habits;
 CREATE POLICY "habitos_entrenamiento_delete" ON public.weekly_training_habits FOR DELETE TO authenticated USING (auth.uid() = user_id);
 
-ALTER PUBLICATION supabase_realtime ADD TABLE public.weekly_training_habits;`;
+-- 4. Habilitar Realtime para reflejo instantáneo en todos tus dispositivos
+DO $$
+BEGIN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.weekly_training_habits;
+EXCEPTION
+    WHEN duplicate_object THEN NULL;
+END $$;`;
 
 export default function TrainingTracker({ sesion: sesionProp }: TrainingTrackerProps) {
   const [sesion, setSesion] = useState<UserSession>(sesionProp || null);
@@ -150,24 +165,32 @@ export default function TrainingTracker({ sesion: sesionProp }: TrainingTrackerP
 
       setSincronizadoNube(true);
 
-      // Si la tabla existe pero el usuario no tiene registros, los insertamos
+      // Si la tabla existe pero el usuario no tiene registros, los insertamos preservando cualquier avance
       if (!data || data.length === 0) {
-        const inserts = datosInicialesSemana.map(item => ({
-          user_id: sesion.user.id,
-          day_of_week: item.day_of_week,
-          activity: item.activity,
-          is_completed: false
-        }));
+        setHabits(prev => {
+          const inserts = datosInicialesSemana.map(item => {
+            const habLocal = prev.find(h => h.day_of_week === item.day_of_week);
+            return {
+              user_id: sesion.user.id,
+              day_of_week: item.day_of_week,
+              activity: item.activity,
+              is_completed: habLocal ? habLocal.is_completed : false
+            };
+          });
 
-        const { data: dataInsertada } = await supabase
-          .from('weekly_training_habits')
-          .insert(inserts)
-          .select();
+          supabase
+            .from('weekly_training_habits')
+            .insert(inserts)
+            .select()
+            .then(({ data: dataInsertada }) => {
+              if (dataInsertada && dataInsertada.length > 0) {
+                setHabits(dataInsertada as WeeklyTrainingHabit[]);
+                localStorage.setItem(claveLocalStorage, JSON.stringify(dataInsertada));
+              }
+            });
 
-        if (dataInsertada && dataInsertada.length > 0) {
-          setHabits(dataInsertada as WeeklyTrainingHabit[]);
-          localStorage.setItem(claveLocalStorage, JSON.stringify(dataInsertada));
-        }
+          return prev;
+        });
       } else {
         setHabits(data as WeeklyTrainingHabit[]);
         localStorage.setItem(claveLocalStorage, JSON.stringify(data));
@@ -178,9 +201,15 @@ export default function TrainingTracker({ sesion: sesionProp }: TrainingTrackerP
   }, [sesion?.user?.id, claveLocalStorage]);
 
   useEffect(() => {
-    if (sesion?.user?.id) {
+    if (!sesion?.user?.id) return;
+    sincronizarConSupabase();
+
+    // Reintento automático cuando el usuario regresa a la pestaña (por si ejecutó el SQL en otra ventana)
+    const handleFocus = () => {
       sincronizarConSupabase();
-    }
+    };
+    window.addEventListener('focus', handleFocus);
+    return () => window.removeEventListener('focus', handleFocus);
   }, [sesion?.user?.id, sincronizarConSupabase]);
 
   // 3. Suscripción Realtime a Supabase
@@ -297,6 +326,17 @@ export default function TrainingTracker({ sesion: sesionProp }: TrainingTrackerP
       if (error) {
         console.warn('Error al actualizar en Supabase:', error.message);
       }
+    } else if (sincronizadoNube && sesion?.user?.id) {
+      // Si el id local aún no ha recibido el UUID de Supabase, actualizamos por user_id y día
+      const { error } = await supabase
+        .from('weekly_training_habits')
+        .update({ is_completed: nuevoEstado, updated_at: new Date().toISOString() })
+        .eq('user_id', sesion.user.id)
+        .eq('day_of_week', habit.day_of_week);
+
+      if (error) {
+        console.warn('Error al actualizar en Supabase por día:', error.message);
+      }
     }
   };
 
@@ -342,21 +382,37 @@ export default function TrainingTracker({ sesion: sesionProp }: TrainingTrackerP
     <div className="max-w-6xl mx-auto space-y-6 animate-fade-in">
       
       {/* Banner de Estado de Sincronización */}
-      {!sincronizadoNube && (
-        <div className="bg-[#FAF5F0] border border-[#EADBCE] text-[#4A3225] p-3.5 rounded-2xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 text-xs font-semibold shadow-2xs">
-          <div className="flex items-center gap-2">
-            <span className="text-base">💾</span>
-            <span>
-              <strong>Modo Local Activo:</strong> Tus entrenamientos se guardan y funcionan en este dispositivo.
-            </span>
+      {!sincronizadoNube ? (
+        <div className="bg-[#FAF5F0] border border-[#EADBCE] text-[#4A3225] p-3.5 rounded-2xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 text-xs font-semibold shadow-2xs">
+          <div className="flex items-start sm:items-center gap-2.5">
+            <span className="text-xl shrink-0">☁️</span>
+            <div>
+              <p className="font-bold text-[#2D1C14]">
+                Nube Supabase pendiente por activar
+              </p>
+              <p className="text-[11px] text-[#8D6B57]">
+                Tus cambios se guardan localmente. Ejecuta el script de 1 clic en Supabase para sincronizar en tiempo real entre todos tus dispositivos.
+              </p>
+            </div>
           </div>
           <button
             type="button"
             onClick={() => setMostrarModalSql(true)}
-            className="text-[11px] font-bold bg-[#2D1C14] hover:bg-[#3E271D] text-white px-3 py-1.5 rounded-xl transition-all active:scale-95 shadow-xs shrink-0 flex items-center gap-1"
+            className="w-full sm:w-auto text-xs font-bold bg-[#2D1C14] hover:bg-[#3E271D] text-white px-3.5 py-2 rounded-xl transition-all active:scale-95 shadow-xs shrink-0 flex items-center justify-center gap-1.5"
           >
-            <span>☁️</span> Activar Nube Supabase
+            <span>⚡</span> Activar Nube Supabase
           </button>
+        </div>
+      ) : (
+        <div className="bg-emerald-50/90 border border-emerald-200 text-emerald-950 px-3.5 py-2.5 rounded-2xl flex items-center justify-between text-xs font-medium shadow-2xs">
+          <div className="flex items-center gap-2">
+            <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+            <span className="font-bold text-emerald-900 text-xs">Nube Supabase Conectada</span>
+            <span className="text-emerald-700/80 text-[11px]">· Sincronización en tiempo real activa</span>
+          </div>
+          <span className="text-[10px] font-bold text-emerald-700 bg-white px-2 py-0.5 rounded-lg border border-emerald-200">
+            Auto-Guardado ✓
+          </span>
         </div>
       )}
 
@@ -588,36 +644,76 @@ export default function TrainingTracker({ sesion: sesionProp }: TrainingTrackerP
 
       {/* Modal con Script SQL para Supabase */}
       {mostrarModalSql && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4">
           <div className="bg-white rounded-3xl max-w-lg w-full p-6 space-y-4 border border-[#EADBCE] shadow-2xl animate-fade-in">
-            <div className="flex justify-between items-center">
-              <h3 className="text-base font-bold text-[#2D1C14] flex items-center gap-2">
-                <span>☁️</span> Activar Nube en Supabase
-              </h3>
+            <div className="flex justify-between items-center pb-2 border-b border-[#EADBCE]/60">
+              <div className="flex items-center gap-2">
+                <span className="text-xl">☁️</span>
+                <div>
+                  <h3 className="text-sm font-black text-[#2D1C14]">
+                    Activar Nube Supabase
+                  </h3>
+                  <p className="text-[10px] text-[#8D6B57]">Proyecto: ktxbonxgrnpzearsgvtc</p>
+                </div>
+              </div>
               <button
                 type="button"
                 onClick={() => setMostrarModalSql(false)}
-                className="text-[#8D6B57] hover:text-[#2D1C14] text-xs font-bold"
+                className="text-[#8D6B57] hover:text-[#2D1C14] text-xs font-bold p-1"
               >
                 ✕ Cerrar
               </button>
             </div>
 
-            <p className="text-xs text-[#6F4A39]">
-              Copia este script y pégalo en el <strong>SQL Editor</strong> de tu consola de Supabase para activar la sincronización multi-dispositivo y en tiempo real:
-            </p>
+            <div className="space-y-1.5 text-xs text-[#6F4A39]">
+              <p className="font-bold text-[#2D1C14]">
+                Para activar el guardado en la nube en 10 segundos:
+              </p>
+              <ol className="list-decimal list-inside space-y-1 text-[11px] text-[#6F4A39]">
+                <li>Haz clic en <strong>Copiar Script SQL</strong>.</li>
+                <li>Haz clic en <strong>Abrir SQL Editor</strong> y pega el código con <kbd className="bg-[#FAF5F0] px-1 py-0.5 rounded border border-[#EADBCE]">Ctrl+V</kbd>.</li>
+                <li>Presiona el botón verde <strong>Run</strong> en Supabase.</li>
+              </ol>
+            </div>
 
-            <pre className="p-3 bg-[#FAF5F0] rounded-xl text-[10px] font-mono text-[#2D1C14] overflow-x-auto max-h-48 border border-[#EADBCE]/70">
+            <pre className="p-3 bg-[#FAF5F0] rounded-xl text-[10px] font-mono text-[#2D1C14] overflow-x-auto max-h-40 border border-[#EADBCE]/70 select-all">
               {SQL_MIGRACION}
             </pre>
 
-            <div className="flex gap-2 pt-2">
+            <div className="flex flex-col sm:flex-row gap-2 pt-1">
               <button
                 type="button"
                 onClick={copiarSql}
-                className="w-full py-2.5 bg-[#2D1C14] hover:bg-[#3E271D] text-white rounded-xl text-xs font-bold active:scale-95 transition-all shadow-xs"
+                className="flex-1 py-2.5 bg-[#2D1C14] hover:bg-[#3E271D] text-white rounded-xl text-xs font-bold active:scale-95 transition-all shadow-xs flex items-center justify-center gap-1.5"
               >
-                {sqlCopiado ? '✅ ¡Copiado al Portapapeles!' : '📋 Copiar Script SQL'}
+                <span>{sqlCopiado ? '✅' : '📋'}</span>
+                <span>{sqlCopiado ? '¡Copiado al Portapapeles!' : 'Copiar Script SQL'}</span>
+              </button>
+
+              <a
+                href="https://supabase.com/dashboard/project/ktxbonxgrnpzearsgvtc/sql/new"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex-1 py-2.5 bg-[#FAF5F0] hover:bg-[#F3ECE4] text-[#2D1C14] border border-[#EADBCE] rounded-xl text-xs font-bold active:scale-95 transition-all shadow-2xs flex items-center justify-center gap-1.5 text-center"
+              >
+                <span>🚀</span>
+                <span>Abrir SQL Editor (1 Clic)</span>
+              </a>
+            </div>
+
+            <div className="pt-2 border-t border-[#EADBCE]/50 flex justify-between items-center">
+              <span className="text-[10px] text-[#8D6B57]">¿Ya ejecutaste el script en Supabase?</span>
+              <button
+                type="button"
+                onClick={async () => {
+                  await sincronizarConSupabase();
+                  if (sincronizadoNube) {
+                    setMostrarModalSql(false);
+                  }
+                }}
+                className="text-[11px] font-bold text-[#2D1C14] hover:underline flex items-center gap-1"
+              >
+                <span>🔄</span> Verificar Conexión
               </button>
             </div>
           </div>
