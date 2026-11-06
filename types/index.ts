@@ -1,6 +1,6 @@
 import type { Session } from '@supabase/supabase-js';
 
-export type TabType = 'calendario' | 'habitos' | 'finanzas' | 'supermercado';
+export type TabType = 'calendario' | 'habitos' | 'entrenamiento' | 'finanzas' | 'supermercado';
 
 export type BloqueHabito = 'Mañana' | 'Tarde' | 'Noche';
 

@@ -21,12 +21,14 @@ import Header from '@/components/layout/Header';
 import BottomNav from '@/components/layout/BottomNav';
 import DashboardTab from '@/components/dashboard/DashboardTab';
 import HabitsTab from '@/components/habits/HabitsTab';
+import TrainingTracker from '@/components/training/TrainingTracker';
 import FinancesTab from '@/components/finances/FinancesTab';
 import GroceryTab from '@/components/grocery/GroceryTab';
 
 const navItems: NavItem[] = [
   { id: 'calendario', icon: '📅', label: 'Dashboard' },
   { id: 'habitos', icon: '🎯', label: 'Targets' },
+  { id: 'entrenamiento', icon: '🏋️‍♂️', label: 'Training' },
   { id: 'finanzas', icon: '💰', label: 'Finances' },
   { id: 'supermercado', icon: '🛒', label: 'Grocery' }
 ];
@@ -210,6 +212,10 @@ export default function Home() {
           onHabitoAgregado={cargarDatosGenerales}
           onMarcarHabito={marcarHabito}
         />
+      )}
+
+      {pestañaActiva === 'entrenamiento' && (
+        <TrainingTracker sesion={sesion} />
       )}
 
       {pestañaActiva === 'finanzas' && (

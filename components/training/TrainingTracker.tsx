@@ -7,68 +7,92 @@ interface TrainingTrackerProps {
   sesion?: UserSession;
 }
 
-// Configuración de metadatos por día y tipo de entrenamiento
-const configEntrenamientos: Record<string, { icono: string; categoria: string; colorTag: string; descripcion: string }> = {
+// Configuración detallada de cada entrenamiento
+const configEntrenamientos: Record<string, { icono: string; categoria: string; descripcion: string; badge: string }> = {
   'Lunes': {
     icono: '🏋️‍♂️',
     categoria: 'Fuerza Pierna',
-    colorTag: 'bg-[#FAF5F0] text-[#4A3225] border-[#EADBCE]',
-    descripcion: 'Sentadillas, peso muerto y fuerza de tren inferior'
+    badge: 'Leg Day',
+    descripcion: 'Sentadillas pesadas, peso muerto rumano, zancadas y tren inferior'
   },
   'Martes': {
     icono: '🚴‍♂️',
-    categoria: 'Ciclismo / Cardio',
-    colorTag: 'bg-[#FAF5F0] text-[#4A3225] border-[#EADBCE]',
-    descripcion: 'Sesión de potencia y cadencia en Peloton'
+    categoria: 'Potencia / Peloton',
+    badge: 'Cardio Hiit',
+    descripcion: 'Sesión de potencia, intervalos de alta cadencia y resistencia aeróbica'
   },
   'Miércoles': {
     icono: '🏃‍♂️',
-    categoria: 'Velocidad Pista',
-    colorTag: 'bg-[#FAF5F0] text-[#4A3225] border-[#EADBCE]',
-    descripcion: 'Series de ritmo controlado y técnica de carrera'
+    categoria: 'Velocidad en Pista',
+    badge: 'Track Intervals',
+    descripcion: 'Series de ritmo controlado, técnica de pisada y umbral de lactato'
   },
   'Jueves': {
     icono: '💪',
-    categoria: 'Fuerza Superior',
-    colorTag: 'bg-[#FAF5F0] text-[#4A3225] border-[#EADBCE]',
-    descripcion: 'Espalda, jalones, dominadas y tren superior'
+    categoria: 'Fuerza Espalda',
+    badge: 'Pull & Core',
+    descripcion: 'Dominadas, jalones al pecho, remo con barra y fortalecimiento de core'
   },
   'Viernes': {
     icono: '⚡',
     categoria: 'Fartlek Asfalto',
-    colorTag: 'bg-[#FAF5F0] text-[#4A3225] border-[#EADBCE]',
-    descripcion: 'Juegos de velocidad y cambios de ritmo en calle'
+    badge: 'Speed Play',
+    descripcion: 'Cambios de ritmo continuos en calle simulando ritmos de carrera'
   },
   'Sábado': {
     icono: '🏔️',
     categoria: 'Fondo / Resistencia',
-    colorTag: 'bg-[#FAF5F0] text-[#4A3225] border-[#EADBCE]',
-    descripcion: 'Tirada larga de 12 km a ritmo aeróbico constante'
+    badge: 'Long Run 12K',
+    descripcion: 'Tirada larga de 12 km a ritmo aeróbico constante y fondo cardiovascular'
   },
   'Domingo': {
     icono: '🧘‍♂️',
-    categoria: 'Recuperación',
-    colorTag: 'bg-[#FAF5F0] text-[#4A3225] border-[#EADBCE]',
-    descripcion: 'Caminata suave, estiramientos y movilidad articular'
+    categoria: 'Recuperación Activa',
+    badge: 'Active Rest',
+    descripcion: 'Caminata regenerativa, estiramientos de cadenas miofasciales y movilidad'
   }
 };
 
 const diasSemanaOrden = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
 
-const datosInicialesSemana = [
-  { day_of_week: 'Lunes', activity: 'Gym Tren Inferior' },
-  { day_of_week: 'Martes', activity: 'Upper Body Peloton' },
-  { day_of_week: 'Miércoles', activity: 'Pista Trote' },
-  { day_of_week: 'Jueves', activity: 'Gym Espalda' },
-  { day_of_week: 'Viernes', activity: 'Fartlek Calle' },
-  { day_of_week: 'Sábado', activity: 'Tirada Larga 12km' },
-  { day_of_week: 'Domingo', activity: 'Descanso Activo' }
+// Hábitos predeterminados iniciales (para disponibilidad instantánea)
+const datosInicialesSemana: WeeklyTrainingHabit[] = [
+  { id: 'hab-lun', day_of_week: 'Lunes', activity: 'Gym Tren Inferior', is_completed: false },
+  { id: 'hab-mar', day_of_week: 'Martes', activity: 'Upper Body Peloton', is_completed: false },
+  { id: 'hab-mie', day_of_week: 'Miércoles', activity: 'Pista Trote', is_completed: false },
+  { id: 'hab-jue', day_of_week: 'Jueves', activity: 'Gym Espalda', is_completed: false },
+  { id: 'hab-vie', day_of_week: 'Viernes', activity: 'Fartlek Calle', is_completed: false },
+  { id: 'hab-sab', day_of_week: 'Sábado', activity: 'Tirada Larga 12km', is_completed: false },
+  { id: 'hab-dom', day_of_week: 'Domingo', activity: 'Descanso Activo', is_completed: false }
 ];
+
+const SQL_MIGRACION = `-- Ejecuta este script en Supabase SQL Editor:
+CREATE TABLE IF NOT EXISTS public.weekly_training_habits (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    day_of_week TEXT NOT NULL,
+    activity TEXT NOT NULL,
+    is_completed BOOLEAN NOT NULL DEFAULT false,
+    user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+    created_at TIMESTAMPTZ DEFAULT now(),
+    updated_at TIMESTAMPTZ DEFAULT now(),
+    CONSTRAINT unique_user_day UNIQUE(user_id, day_of_week)
+);
+
+ALTER TABLE public.weekly_training_habits ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "habitos_entrenamiento_select" ON public.weekly_training_habits FOR SELECT TO authenticated USING (auth.uid() = user_id);
+CREATE POLICY "habitos_entrenamiento_insert" ON public.weekly_training_habits FOR INSERT TO authenticated WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "habitos_entrenamiento_update" ON public.weekly_training_habits FOR UPDATE TO authenticated USING (auth.uid() = user_id);
+CREATE POLICY "habitos_entrenamiento_delete" ON public.weekly_training_habits FOR DELETE TO authenticated USING (auth.uid() = user_id);
+
+ALTER PUBLICATION supabase_realtime ADD TABLE public.weekly_training_habits;`;
 
 export default function TrainingTracker({ sesion: sesionProp }: TrainingTrackerProps) {
   const [sesion, setSesion] = useState<UserSession>(sesionProp || null);
-  const [habits, setHabits] = useState<WeeklyTrainingHabit[]>([]);
-  const [cargando, setCargando] = useState(true);
+  const [habits, setHabits] = useState<WeeklyTrainingHabit[]>(datosInicialesSemana);
+  const [sincronizadoNube, setSincronizadoNube] = useState(false);
+  const [mostrarModalSql, setMostrarModalSql] = useState(false);
+  const [sqlCopiado, setSqlCopiado] = useState(false);
   const [notificacionEspecial, setNotificacionEspecial] = useState<{ visible: boolean; mensaje: string } | null>(null);
 
   // Obtener el día actual en Colombia
@@ -76,66 +100,92 @@ export default function TrainingTracker({ sesion: sesionProp }: TrainingTrackerP
   const { diaSemana: diaSemanaIndex, fechaStr } = getFechaActualColombia();
   const diaActualTexto = mapDiaSemanaTexto[diaSemanaIndex] || 'Lunes';
 
-  // Verificar o recuperar sesión si no vino por props
+  const claveLocalStorage = sesion?.user?.id 
+    ? `jgm_training_habits_${sesion.user.id}` 
+    : 'jgm_training_habits_guest';
+
+  // Obtener sesión activa si no vino en props
   useEffect(() => {
     if (sesionProp) {
       setSesion(sesionProp);
       return;
     }
     supabase.auth.getSession().then(({ data }) => {
-      setSesion(data.session);
+      if (data.session) setSesion(data.session);
     });
   }, [sesionProp]);
 
-  // Cargar hábitos de la base de datos
-  const cargarHabitos = useCallback(async () => {
-    if (!sesion?.user?.id) return;
-    setCargando(true);
-
-    const { data, error } = await supabase
-      .from('weekly_training_habits')
-      .select('*')
-      .eq('user_id', sesion.user.id);
-
-    if (error) {
-      console.error('Error al cargar weekly_training_habits:', error.message);
-      setCargando(false);
-      return;
-    }
-
-    // Si el usuario aún no tiene los hábitos insertados, los creamos automáticamente
-    if (!data || data.length === 0) {
-      const inserts = datosInicialesSemana.map(item => ({
-        user_id: sesion.user.id,
-        day_of_week: item.day_of_week,
-        activity: item.activity,
-        is_completed: false
-      }));
-
-      const { data: dataInsertada, error: errInsert } = await supabase
-        .from('weekly_training_habits')
-        .insert(inserts)
-        .select();
-
-      if (!errInsert && dataInsertada) {
-        setHabits(dataInsertada as WeeklyTrainingHabit[]);
+  // 1. Cargar hábitos iniciales desde localStorage para renderizado en 0ms
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const guardado = localStorage.getItem(claveLocalStorage);
+        if (guardado) {
+          const parseado = JSON.parse(guardado);
+          if (Array.isArray(parseado) && parseado.length > 0) {
+            setHabits(parseado);
+          }
+        }
+      } catch {
+        // Fallback a datosInicialesSemana
       }
-    } else {
-      setHabits(data as WeeklyTrainingHabit[]);
     }
+  }, [claveLocalStorage]);
 
-    setCargando(false);
-  }, [sesion?.user?.id]);
+  // 2. Sincronizar con Supabase (en la nube) si la tabla existe
+  const sincronizarConSupabase = useCallback(async () => {
+    if (!sesion?.user?.id) return;
+
+    try {
+      const { data, error } = await supabase
+        .from('weekly_training_habits')
+        .select('*')
+        .eq('user_id', sesion.user.id);
+
+      if (error) {
+        // La tabla aún no ha sido creada en Supabase (error 404 de PostgREST)
+        setSincronizadoNube(false);
+        return;
+      }
+
+      setSincronizadoNube(true);
+
+      // Si la tabla existe pero el usuario no tiene registros, los insertamos
+      if (!data || data.length === 0) {
+        const inserts = datosInicialesSemana.map(item => ({
+          user_id: sesion.user.id,
+          day_of_week: item.day_of_week,
+          activity: item.activity,
+          is_completed: false
+        }));
+
+        const { data: dataInsertada } = await supabase
+          .from('weekly_training_habits')
+          .insert(inserts)
+          .select();
+
+        if (dataInsertada && dataInsertada.length > 0) {
+          setHabits(dataInsertada as WeeklyTrainingHabit[]);
+          localStorage.setItem(claveLocalStorage, JSON.stringify(dataInsertada));
+        }
+      } else {
+        setHabits(data as WeeklyTrainingHabit[]);
+        localStorage.setItem(claveLocalStorage, JSON.stringify(data));
+      }
+    } catch {
+      setSincronizadoNube(false);
+    }
+  }, [sesion?.user?.id, claveLocalStorage]);
 
   useEffect(() => {
     if (sesion?.user?.id) {
-      cargarHabitos();
+      sincronizarConSupabase();
     }
-  }, [sesion?.user?.id, cargarHabitos]);
+  }, [sesion?.user?.id, sincronizarConSupabase]);
 
-  // Suscripción en Realtime de Supabase
+  // 3. Suscripción Realtime a Supabase
   useEffect(() => {
-    if (!sesion?.user?.id) return;
+    if (!sesion?.user?.id || !sincronizadoNube) return;
 
     const canal = supabase
       .channel('realtime_weekly_training_habits')
@@ -150,15 +200,25 @@ export default function TrainingTracker({ sesion: sesionProp }: TrainingTrackerP
         (payload) => {
           if (payload.eventType === 'UPDATE') {
             const updated = payload.new as WeeklyTrainingHabit;
-            setHabits(prev => prev.map(h => (h.id === updated.id ? updated : h)));
+            setHabits(prev => {
+              const nuevaLista = prev.map(h => (h.id === updated.id ? updated : h));
+              localStorage.setItem(claveLocalStorage, JSON.stringify(nuevaLista));
+              return nuevaLista;
+            });
           } else if (payload.eventType === 'INSERT') {
             const inserted = payload.new as WeeklyTrainingHabit;
             setHabits(prev => {
               if (prev.some(h => h.id === inserted.id)) return prev;
-              return [...prev, inserted];
+              const nuevaLista = [...prev, inserted];
+              localStorage.setItem(claveLocalStorage, JSON.stringify(nuevaLista));
+              return nuevaLista;
             });
           } else if (payload.eventType === 'DELETE') {
-            setHabits(prev => prev.filter(h => h.id !== payload.old.id));
+            setHabits(prev => {
+              const nuevaLista = prev.filter(h => h.id !== payload.old.id);
+              localStorage.setItem(claveLocalStorage, JSON.stringify(nuevaLista));
+              return nuevaLista;
+            });
           }
         }
       )
@@ -167,15 +227,14 @@ export default function TrainingTracker({ sesion: sesionProp }: TrainingTrackerP
     return () => {
       supabase.removeChannel(canal);
     };
-  }, [sesion?.user?.id]);
+  }, [sesion?.user?.id, sincronizadoNube, claveLocalStorage]);
 
-  // Función para añadir "Huevos y Arepa" al supermercado (Grocery)
+  // Disparador del evento Grocery: añade "Huevos y Arepa" a la compra actual
   const dispararAgregarHuevosYArepa = async () => {
     if (!sesion?.user?.id) return;
 
     try {
-      const nombreItem = 'Huevos y Arepa';
-      // Verificamos si ya está en la compra actual
+      const nombreItem = 'Huevos y Arepa (Post-Entreno)';
       const { data: existentes } = await supabase
         .from('mercado_lista')
         .select('id')
@@ -205,12 +264,14 @@ export default function TrainingTracker({ sesion: sesionProp }: TrainingTrackerP
     }
   };
 
-  // Manejador del cambio de checkbox (con actualización optimista y realtime)
+  // Manejador del cambio de checkbox (con actualización optimista, localStorage y realtime)
   const handleCheckboxChange = async (habit: WeeklyTrainingHabit) => {
     const nuevoEstado = !habit.is_completed;
 
-    // 1. Actualización optimista inmediata en la UI (0ms de retraso)
-    setHabits(prev => prev.map(h => (h.id === habit.id ? { ...h, is_completed: nuevoEstado } : h)));
+    // 1. Actualización optimista inmediata en la UI y respaldo en localStorage (0ms)
+    const habitsActualizados = habits.map(h => (h.id === habit.id ? { ...h, is_completed: nuevoEstado } : h));
+    setHabits(habitsActualizados);
+    localStorage.setItem(claveLocalStorage, JSON.stringify(habitsActualizados));
 
     // =====================================================================================
     // 🚨 DISPARADOR DE EVENTO ESPECIAL (SUPERMERCADO):
@@ -226,62 +287,80 @@ export default function TrainingTracker({ sesion: sesionProp }: TrainingTrackerP
     }
     // =====================================================================================
 
-    // 2. Persistencia en Supabase
-    const { error } = await supabase
-      .from('weekly_training_habits')
-      .update({ is_completed: nuevoEstado, updated_at: new Date().toISOString() })
-      .eq('id', habit.id);
+    // 2. Persistencia en Supabase (si la tabla está disponible en la nube)
+    if (sincronizadoNube && habit.id && !habit.id.startsWith('hab-')) {
+      const { error } = await supabase
+        .from('weekly_training_habits')
+        .update({ is_completed: nuevoEstado, updated_at: new Date().toISOString() })
+        .eq('id', habit.id);
 
-    if (error) {
-      // Revertir estado si ocurre error
-      setHabits(prev => prev.map(h => (h.id === habit.id ? { ...h, is_completed: !nuevoEstado } : h)));
-      alert(`Error al actualizar hábito de entrenamiento: ${error.message}`);
+      if (error) {
+        console.warn('Error al actualizar en Supabase:', error.message);
+      }
     }
   };
 
   // Reiniciar la semana (todos los hábitos a pendiente)
   const reiniciarSemana = async () => {
-    if (!sesion?.user?.id) return;
-    const confirmar = confirm("¿Deseas reiniciar los entrenamientos de la semana a pendientes?");
+    const confirmar = confirm("¿Deseas reiniciar todos los entrenamientos de la semana a pendientes?");
     if (!confirmar) return;
 
-    // Actualización optimista
-    setHabits(prev => prev.map(h => ({ ...h, is_completed: false })));
+    const reseteados = habits.map(h => ({ ...h, is_completed: false }));
+    setHabits(reseteados);
+    localStorage.setItem(claveLocalStorage, JSON.stringify(reseteados));
 
-    await supabase
-      .from('weekly_training_habits')
-      .update({ is_completed: false, updated_at: new Date().toISOString() })
-      .eq('user_id', sesion.user.id);
+    if (sincronizadoNube && sesion?.user?.id) {
+      await supabase
+        .from('weekly_training_habits')
+        .update({ is_completed: false, updated_at: new Date().toISOString() })
+        .eq('user_id', sesion.user.id);
+    }
   };
 
-  // Ordenar los hábitos por orden natural de la semana (Lunes a Domingo)
+  const copiarSql = () => {
+    navigator.clipboard.writeText(SQL_MIGRACION);
+    setSqlCopiado(true);
+    setTimeout(() => setSqlCopiado(false), 3000);
+  };
+
+  // Ordenar hábitos de Lunes a Domingo
   const habitosOrdenados = [...habits].sort(
     (a, b) => diasSemanaOrden.indexOf(a.day_of_week) - diasSemanaOrden.indexOf(b.day_of_week)
   );
 
-  // Encontrar el hábito del día de hoy (Tarjeta Héroe)
+  // Identificar el hábito del día actual (Héroe)
   const habitoHoy = habitosOrdenados.find(h => h.day_of_week === diaActualTexto) || habitosOrdenados[0];
-  // Los otros 6 días
+  // Los otros 6 días para la cuadrícula secundaria
   const otrosDias = habitosOrdenados.filter(h => h.day_of_week !== diaActualTexto);
 
-  // Métricas generales
+  // Cálculos de progreso
   const totalCompletados = habits.filter(h => h.is_completed).length;
   const porcentajeProgreso = habits.length > 0 ? Math.round((totalCompletados / habits.length) * 100) : 0;
   const configHoy = habitoHoy ? configEntrenamientos[habitoHoy.day_of_week] : null;
 
-  if (cargando && habits.length === 0) {
-    return (
-      <div className="bg-white p-8 rounded-3xl border border-[#EADBCE]/80 shadow-[0_2px_16px_rgba(45,28,20,0.03)] animate-pulse flex flex-col items-center justify-center min-h-[300px]">
-        <span className="text-3xl mb-2">🏋️‍♂️</span>
-        <p className="text-sm font-bold text-[#8D6B57]">Cargando Training Tracker...</p>
-      </div>
-    );
-  }
-
   return (
     <div className="max-w-6xl mx-auto space-y-6 animate-fade-in">
       
-      {/* Notificación Especial (Post-Entreno) */}
+      {/* Banner de Estado de Sincronización */}
+      {!sincronizadoNube && (
+        <div className="bg-[#FAF5F0] border border-[#EADBCE] text-[#4A3225] p-3.5 rounded-2xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 text-xs font-semibold shadow-2xs">
+          <div className="flex items-center gap-2">
+            <span className="text-base">💾</span>
+            <span>
+              <strong>Modo Local Activo:</strong> Tus entrenamientos se guardan y funcionan en este dispositivo.
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setMostrarModalSql(true)}
+            className="text-[11px] font-bold bg-[#2D1C14] hover:bg-[#3E271D] text-white px-3 py-1.5 rounded-xl transition-all active:scale-95 shadow-xs shrink-0 flex items-center gap-1"
+          >
+            <span>☁️</span> Activar Nube Supabase
+          </button>
+        </div>
+      )}
+
+      {/* Toast Especial Post-Entreno */}
       {notificacionEspecial?.visible && (
         <div className="bg-[#2D1C14] text-white p-4 rounded-3xl border border-[#4A3225] shadow-[0_8px_24px_rgba(45,28,20,0.2)] flex items-center justify-between gap-3 animate-fade-in">
           <div className="flex items-center gap-3">
@@ -335,7 +414,7 @@ export default function TrainingTracker({ sesion: sesionProp }: TrainingTrackerP
             type="button"
             onClick={reiniciarSemana}
             className="px-3.5 py-2 rounded-2xl border border-[#EADBCE] bg-[#FAF5F0] hover:bg-white text-[#2D1C14] text-xs font-bold transition-all active:scale-95 shadow-2xs flex items-center gap-1.5"
-            title="Reiniciar todos los hábitos de la semana"
+            title="Reiniciar todos los hábitos de la semana a pendientes"
           >
             <span>🔄</span>
             <span className="hidden sm:inline">Reiniciar</span>
@@ -343,20 +422,18 @@ export default function TrainingTracker({ sesion: sesionProp }: TrainingTrackerP
         </div>
       </div>
 
+      {/* ========================================================================= */}
       {/* BENTO GRID DE ENTRENAMIENTOS */}
+      {/* ========================================================================= */}
       <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-5">
         
-        {/* ================================================================= */}
-        {/* TARJETA HÉROE: ACTIVIDAD DEL DÍA ACTUAL (Bento Grid Principal) */}
-        {/* ================================================================= */}
+        {/* TARJETA HÉROE: ACTIVIDAD DEL DÍA ACTUAL (Bento Principal) */}
         {habitoHoy && (
           <div className="col-span-1 md:col-span-2 lg:col-span-2 md:row-span-2 bg-[#2D1C14] text-white p-6 md:p-8 rounded-3xl shadow-[0_12px_36px_rgba(45,28,20,0.15)] border border-[#3E271D] flex flex-col justify-between relative overflow-hidden group">
             
-            {/* Resplandor decorativo sutil en estilo Liquid Glass */}
             <div className="absolute top-0 right-0 w-64 h-64 bg-radial from-[#55382B]/30 to-transparent rounded-full blur-3xl pointer-events-none" />
 
             <div>
-              {/* Badge Dinámico de Hoy */}
               <div className="flex justify-between items-center mb-6">
                 <div className="flex items-center gap-2">
                   <span className="inline-flex items-center gap-1.5 bg-white/10 backdrop-blur-md px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest text-[#E5C8B4] border border-white/15">
@@ -365,7 +442,7 @@ export default function TrainingTracker({ sesion: sesionProp }: TrainingTrackerP
                   </span>
                   {configHoy && (
                     <span className="hidden sm:inline-block bg-white/5 px-2.5 py-1 rounded-full text-[10px] font-bold text-white/70 border border-white/10">
-                      {configHoy.categoria}
+                      {configHoy.badge}
                     </span>
                   )}
                 </div>
@@ -375,7 +452,6 @@ export default function TrainingTracker({ sesion: sesionProp }: TrainingTrackerP
                 </span>
               </div>
 
-              {/* Título de la Actividad de Hoy */}
               <div className="space-y-2">
                 <span className="text-xs uppercase tracking-wider text-[#C89F89] font-bold">
                   Entrenamiento Programado
@@ -391,7 +467,6 @@ export default function TrainingTracker({ sesion: sesionProp }: TrainingTrackerP
               </div>
             </div>
 
-            {/* Checkbox / Botón de Acción Principal para Hoy */}
             <div className="pt-8 border-t border-white/10 mt-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
               <div className="flex items-center gap-3">
                 <label className="relative flex items-center justify-center cursor-pointer">
@@ -431,9 +506,7 @@ export default function TrainingTracker({ sesion: sesionProp }: TrainingTrackerP
           </div>
         )}
 
-        {/* ================================================================= */}
-        {/* TARJETAS BENTO PARA LOS OTROS DÍAS DE LA SEMANA */}
-        {/* ================================================================= */}
+        {/* TARJETAS BENTO PARA LOS OTROS 6 DÍAS */}
         {otrosDias.map((h) => {
           const config = configEntrenamientos[h.day_of_week];
           const esSabadoTirada = h.day_of_week === 'Sábado';
@@ -448,7 +521,6 @@ export default function TrainingTracker({ sesion: sesionProp }: TrainingTrackerP
               }`}
             >
               <div>
-                {/* Cabecera del día */}
                 <div className="flex justify-between items-start mb-3">
                   <div className="flex items-center gap-1.5">
                     <span className="text-lg">{config?.icono || '🏋️‍♂️'}</span>
@@ -457,19 +529,17 @@ export default function TrainingTracker({ sesion: sesionProp }: TrainingTrackerP
                     </span>
                   </div>
 
-                  {/* Badge de completado o categoría */}
                   {h.is_completed ? (
                     <span className="text-[9px] font-black uppercase text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
                       Listo ✓
                     </span>
                   ) : (
                     <span className="text-[9px] font-bold text-[#8D6B57] bg-[#FAF5F0] px-2 py-0.5 rounded-md border border-[#EADBCE]/60">
-                      {config?.categoria || 'Entreno'}
+                      {config?.badge || 'Sesión'}
                     </span>
                   )}
                 </div>
 
-                {/* Actividad */}
                 <h4
                   className={`font-bold text-sm tracking-tight transition-all ${
                     h.is_completed
@@ -480,15 +550,19 @@ export default function TrainingTracker({ sesion: sesionProp }: TrainingTrackerP
                   {h.activity}
                 </h4>
 
-                {/* Detalle especial para Sábado */}
+                {config?.descripcion && (
+                  <p className="text-[11px] text-[#8D6B57] mt-1 line-clamp-2">
+                    {config.descripcion}
+                  </p>
+                )}
+
                 {esSabadoTirada && !h.is_completed && (
-                  <p className="text-[10px] text-[#C89F89] font-semibold mt-1 flex items-center gap-1">
+                  <p className="text-[10px] text-[#C89F89] font-semibold mt-2 flex items-center gap-1 bg-[#FAF5F0] px-2 py-1 rounded-lg border border-[#EADBCE]/60">
                     <span>🍳</span> Añade &quot;Huevos y Arepa&quot; al completar
                   </p>
                 )}
               </div>
 
-              {/* Checkbox y acción de toggle */}
               <div className="pt-4 border-t border-[#EADBCE]/50 mt-4 flex items-center justify-between">
                 <span className="text-[10px] font-bold text-[#8D6B57]">
                   {h.is_completed ? 'Completado' : 'Pendiente'}
@@ -511,6 +585,44 @@ export default function TrainingTracker({ sesion: sesionProp }: TrainingTrackerP
         })}
 
       </div>
+
+      {/* Modal con Script SQL para Supabase */}
+      {mostrarModalSql && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4">
+          <div className="bg-white rounded-3xl max-w-lg w-full p-6 space-y-4 border border-[#EADBCE] shadow-2xl animate-fade-in">
+            <div className="flex justify-between items-center">
+              <h3 className="text-base font-bold text-[#2D1C14] flex items-center gap-2">
+                <span>☁️</span> Activar Nube en Supabase
+              </h3>
+              <button
+                type="button"
+                onClick={() => setMostrarModalSql(false)}
+                className="text-[#8D6B57] hover:text-[#2D1C14] text-xs font-bold"
+              >
+                ✕ Cerrar
+              </button>
+            </div>
+
+            <p className="text-xs text-[#6F4A39]">
+              Copia este script y pégalo en el <strong>SQL Editor</strong> de tu consola de Supabase para activar la sincronización multi-dispositivo y en tiempo real:
+            </p>
+
+            <pre className="p-3 bg-[#FAF5F0] rounded-xl text-[10px] font-mono text-[#2D1C14] overflow-x-auto max-h-48 border border-[#EADBCE]/70">
+              {SQL_MIGRACION}
+            </pre>
+
+            <div className="flex gap-2 pt-2">
+              <button
+                type="button"
+                onClick={copiarSql}
+                className="w-full py-2.5 bg-[#2D1C14] hover:bg-[#3E271D] text-white rounded-xl text-xs font-bold active:scale-95 transition-all shadow-xs"
+              >
+                {sqlCopiado ? '✅ ¡Copiado al Portapapeles!' : '📋 Copiar Script SQL'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );
