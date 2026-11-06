@@ -22,6 +22,16 @@ export interface CuotaAporte {
   user_id?: string;
 }
 
+export interface WeeklyTrainingHabit {
+  id: string;
+  day_of_week: 'Lunes' | 'Martes' | 'Miércoles' | 'Jueves' | 'Viernes' | 'Sábado' | 'Domingo' | string;
+  activity: string;
+  is_completed: boolean;
+  user_id?: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
 export interface Habito {
   id: string;
   nombre: string;

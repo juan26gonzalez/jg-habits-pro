@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import Modal from '@/components/ui/Modal';
 import { sumarDiasFechaStr } from '@/lib/dateUtils';
+import TrainingTracker from '@/components/training/TrainingTracker';
 import type { Habito, HabitoRegistro, UserSession, BloqueHabito } from '@/types';
 
 interface HabitsTabProps {
@@ -30,6 +31,9 @@ export default function HabitsTab({
   onHabitoAgregado,
   onMarcarHabito
 }: HabitsTabProps) {
+  // Submódulo activo: Targets Diarios o Training Tracker
+  const [submodulo, setSubmodulo] = useState<'targets' | 'training'>('targets');
+
   // Selector de fecha (Hoy o Ayer para edición retroactiva)
   const fechaAyer = sumarDiasFechaStr(strHoy, -1);
   const [fechaActiva, setFechaActiva] = useState(strHoy);
@@ -286,9 +290,45 @@ export default function HabitsTab({
     : [filtroBloque];
 
   return (
-    <div className="max-w-5xl mx-auto animate-fade-in space-y-6">
+    <div className="max-w-6xl mx-auto animate-fade-in space-y-6">
       
-      {/* Botón de apertura / cierre del formulario, Selector de Fecha (Hoy/Ayer) y Filtro de Bloque */}
+      {/* Selector de Submódulo: Targets Diarios vs Training Tracker */}
+      <div className="flex items-center gap-1.5 bg-[#FAF5F0] p-1.5 rounded-2xl border border-[#EADBCE]/80 text-xs font-bold w-fit shadow-2xs">
+        <button
+          type="button"
+          onClick={() => setSubmodulo('targets')}
+          className={`px-4 py-2 rounded-xl transition-all active:scale-95 flex items-center gap-2 ${
+            submodulo === 'targets'
+              ? 'bg-[#2D1C14] text-white shadow-xs'
+              : 'text-[#8D6B57] hover:text-[#2D1C14]'
+          }`}
+        >
+          <span>🎯 Targets Diarios</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setSubmodulo('training')}
+          className={`px-4 py-2 rounded-xl transition-all active:scale-95 flex items-center gap-2 ${
+            submodulo === 'training'
+              ? 'bg-[#2D1C14] text-white shadow-xs'
+              : 'text-[#8D6B57] hover:text-[#2D1C14]'
+          }`}
+        >
+          <span>🏋️‍♂️ Training Tracker</span>
+          <span className={`text-[9px] font-black uppercase px-1.5 py-0.5 rounded-md border ${
+            submodulo === 'training' ? 'bg-[#FAF5F0] text-[#2D1C14] border-[#EADBCE]' : 'bg-white text-[#8D6B57] border-[#EADBCE]/60'
+          }`}>
+            Bento
+          </span>
+        </button>
+      </div>
+
+      {submodulo === 'training' ? (
+        <TrainingTracker sesion={sesion} />
+      ) : (
+        <>
+          {/* Botón de apertura / cierre del formulario, Selector de Fecha (Hoy/Ayer) y Filtro de Bloque */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-white p-3.5 rounded-3xl border border-[#EADBCE]/80 shadow-[0_2px_16px_rgba(45,28,20,0.03)]">
         <button 
           onClick={() => setMostrarFormulario(!mostrarFormulario)}
@@ -735,6 +775,8 @@ export default function HabitsTab({
             </div>
           </div>
         </Modal>
+      )}
+        </>
       )}
 
     </div>
