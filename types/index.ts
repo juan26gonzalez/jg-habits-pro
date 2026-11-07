@@ -92,9 +92,74 @@ export interface CompraHistorial {
   user_id?: string;
 }
 
+export interface AporteDetalle {
+  integrante: string;
+  monto: number;
+}
+
+export interface PagoCubierto {
+  id: string;
+  gasto_origen_id?: string;
+  concepto: string;
+  categoria: string;
+  monto_total: number;
+  fecha_vencimiento_original: string; // ej. "2026-11-15"
+  fecha_cubierto: string; // ej. "2026-11-06"
+  mes_cubierto: string; // ej. "Noviembre 2026"
+  proxima_fecha_renovada?: string; // ej. "2026-12-15"
+  aportes: AporteDetalle[];
+  user_id?: string;
+}
+
 export function limpiarConceptoGasto(concepto?: string | null): string {
   if (!concepto) return '';
-  return concepto.split(' ||JGM_COMPRA::')[0].trim();
+  return concepto.split(' ||JGM_')[0].trim();
+}
+
+export function esGastoPagoCubierto(gasto: Gasto): boolean {
+  return Boolean(gasto?.concepto && gasto.concepto.includes(' ||JGM_PAGO_CUBIERTO::'));
+}
+
+export function esGastoCompraGrocery(gasto: Gasto): boolean {
+  return Boolean(gasto?.concepto && gasto.concepto.includes(' ||JGM_COMPRA::'));
+}
+
+export function serializarPagoCubierto(pago: Omit<PagoCubierto, 'id'>): string {
+  return `${pago.concepto} ||JGM_PAGO_CUBIERTO::${JSON.stringify({
+    gasto_origen_id: pago.gasto_origen_id,
+    categoria: pago.categoria,
+    fecha_vencimiento_original: pago.fecha_vencimiento_original,
+    fecha_cubierto: pago.fecha_cubierto,
+    mes_cubierto: pago.mes_cubierto,
+    proxima_fecha_renovada: pago.proxima_fecha_renovada,
+    aportes: pago.aportes
+  })}`;
+}
+
+export function extraerPagoCubiertoDeGasto(gasto: Gasto): PagoCubierto | null {
+  if (!gasto?.concepto || !gasto.concepto.includes(' ||JGM_PAGO_CUBIERTO::')) {
+    return null;
+  }
+  try {
+    const partes = gasto.concepto.split(' ||JGM_PAGO_CUBIERTO::');
+    const conceptoLimpio = partes[0].trim();
+    const data = JSON.parse(partes[1]);
+    return {
+      id: gasto.id,
+      gasto_origen_id: data.gasto_origen_id,
+      concepto: conceptoLimpio,
+      categoria: data.categoria || gasto.categoria || 'General',
+      monto_total: Number(gasto.monto_total) || 0,
+      fecha_vencimiento_original: data.fecha_vencimiento_original || gasto.fecha_vencimiento || '',
+      fecha_cubierto: data.fecha_cubierto || '',
+      mes_cubierto: data.mes_cubierto || '',
+      proxima_fecha_renovada: data.proxima_fecha_renovada || '',
+      aportes: Array.isArray(data.aportes) ? data.aportes : [],
+      user_id: gasto.user_id
+    };
+  } catch {
+    return null;
+  }
 }
 
 export function extraerCompraDeGasto(gasto: Gasto): CompraHistorial | null {

@@ -67,3 +67,57 @@ export function sumarDiasFechaStr(fechaStr: string, dias: number): string {
   const dateObj = new Date(y, m - 1, d + dias, 12, 0, 0);
   return getFechaColombia(dateObj);
 }
+
+/**
+ * Avanza exactamente un mes a la misma fecha del día (ej. 2026-11-15 -> 2026-12-15).
+ * Si el mes destino tiene menos días (ej. 31 de Enero a Febrero), ajusta al último día del mes.
+ */
+export function sumarUnMesMismaFecha(fechaStr?: string | null): string {
+  if (!fechaStr) {
+    fechaStr = getFechaColombia();
+  }
+  const [y, m, d] = fechaStr.split('-').map(Number);
+  let nuevoAnio = y;
+  let nuevoMes = m + 1; // 1-indexed (m es 1-12)
+  if (nuevoMes > 12) {
+    nuevoMes = 1;
+    nuevoAnio += 1;
+  }
+  // Último día válido en el mes destino (año, mes, 0 da el último día del mes)
+  const maxDias = new Date(nuevoAnio, nuevoMes, 0).getDate();
+  const nuevoDia = Math.min(d, maxDias);
+
+  const mStr = String(nuevoMes).padStart(2, '0');
+  const dStr = String(nuevoDia).padStart(2, '0');
+  return `${nuevoAnio}-${mStr}-${dStr}`;
+}
+
+/**
+ * Obtiene el nombre del mes y año legible (ej. "Noviembre 2026")
+ */
+export function obtenerMesAnioTexto(fechaStr: string): string {
+  if (!fechaStr) return '';
+  const nombresMeses = [
+    'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+    'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
+  ];
+  const [y, m] = fechaStr.split('-').map(Number);
+  if (!y || !m || m < 1 || m > 12) return fechaStr;
+  return `${nombresMeses[m - 1]} ${y}`;
+}
+
+/**
+ * Formatea una fecha en texto completo legible en español.
+ */
+export function formatearFechaBonita(fechaStr: string): string {
+  if (!fechaStr) return '';
+  const [y, m, d] = fechaStr.split('-').map(Number);
+  if (!y || !m || !d) return fechaStr;
+  const diasNombres = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+  const nombresMeses = [
+    'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+    'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
+  ];
+  const diaSemanaIndex = new Date(y, m - 1, d, 12, 0, 0).getDay();
+  return `${diasNombres[diaSemanaIndex]}, ${d} de ${nombresMeses[m - 1]} de ${y}`;
+}

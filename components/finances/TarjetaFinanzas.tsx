@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import Modal from '@/components/ui/Modal';
 import { limpiarConceptoGasto } from '@/types';
+import { sumarUnMesMismaFecha, formatearFechaBonita } from '@/lib/dateUtils';
 import type { Gasto, CuotaAporte, UserSession } from '@/types';
 
 interface TarjetaFinanzasProps {
@@ -12,6 +13,7 @@ interface TarjetaFinanzasProps {
   onAporteAgregado?: (nuevoAporte: CuotaAporte) => void;
   onAporteActualizado?: (aporteActualizado: CuotaAporte) => void;
   onAporteEliminado?: (aporteId: string) => void;
+  onRenovarAlProximoMes?: (gasto: Gasto, aportes: CuotaAporte[]) => Promise<void>;
 }
 
 export default function TarjetaFinanzas({ 
@@ -21,12 +23,14 @@ export default function TarjetaFinanzas({
   onGastoActualizado,
   onAporteAgregado,
   onAporteActualizado,
-  onAporteEliminado
+  onAporteEliminado,
+  onRenovarAlProximoMes
 }: TarjetaFinanzasProps) {
   const [aportes, setAportes] = useState<CuotaAporte[]>([]);
   const [nombreIntegrante, setNombreIntegrante] = useState('');
   const [montoAporte, setMontoAporte] = useState('');
   const [agregandoAporte, setAgregandoAporte] = useState(false);
+  const [renovando, setRenovando] = useState(false);
 
   // Estado para editar nombre del integrante y monto del aporte
   const [editandoAporteId, setEditandoAporteId] = useState<string | null>(null);
@@ -284,6 +288,38 @@ export default function TarjetaFinanzas({
             {restante > 0 ? `Faltan: $${restante.toLocaleString('es-CO')}` : '¡Gasto cubierto al 100%!'}
           </p>
         </div>
+
+        {/* Banner de Renovación al Próximo Mes para Gastos 100% Cubiertos */}
+        {porcentaje >= 100 && (
+          <div className="p-3.5 bg-emerald-50/90 border border-emerald-200/90 rounded-2xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2.5 animate-fade-in shadow-2xs">
+            <div className="min-w-0">
+              <span className="text-[11px] font-black text-emerald-950 flex items-center gap-1">
+                <span>🎉</span> ¡Pago cubierto al 100%!
+              </span>
+              <p className="text-[10px] text-emerald-800 font-medium mt-0.5">
+                Al renovar, se guardará en <strong>Pagos Cubiertos</strong> y se actualizará para el <strong className="font-bold">{formatearFechaBonita(sumarUnMesMismaFecha(gasto.fecha_vencimiento))}</strong>.
+              </p>
+            </div>
+            {onRenovarAlProximoMes && (
+              <button
+                type="button"
+                onClick={async () => {
+                  setRenovando(true);
+                  try {
+                    await onRenovarAlProximoMes(gasto, aportes);
+                  } finally {
+                    setRenovando(false);
+                  }
+                }}
+                disabled={renovando}
+                className="w-full sm:w-auto px-3.5 py-2 rounded-xl bg-[#2D1C14] hover:bg-[#3E271D] text-white text-xs font-bold transition-all active:scale-95 shadow-xs shrink-0 flex items-center justify-center gap-1.5 disabled:opacity-50"
+              >
+                <span>🔄</span>
+                <span>{renovando ? 'Guardando...' : 'Guardar y Renovar'}</span>
+              </button>
+            )}
+          </div>
+        )}
 
         {/* Sección de Aportes Registrados o Placeholder Equilibrado */}
         {aportes.length > 0 ? (
